@@ -49,7 +49,9 @@ pub fn compute_ma(input: &[f64], period: usize, ma_type: MaType) -> TaResult<Vec
         MaType::Tema => overlap::tema(input, period),
         MaType::Trima => overlap::trima(input, period),
         MaType::Kama => overlap::kama(input, period),
-        // MAMA 和 T3 有额外参数，这里使用默认值
+        // MAMA/T3 通过 MA 调度器调用时使用固定默认值，与 C TA-Lib ta_MA.c 完全一致:
+        //   MAMA: fastlimit=0.5, slowlimit=0.05 (忽略 period)
+        //   T3:   vfactor=0.7 (period 正常传递)
         MaType::Mama => {
             let (mama, _fama) = overlap::mama(input, 0.5, 0.05)?;
             Ok(mama)

@@ -1,5 +1,5 @@
 """
-性能基准测试: ta-rs vs 原版 C TA-Lib
+性能基准测试: talib-rs vs 原版 C TA-Lib
 
 使用方法:
     pip install pytest-benchmark
@@ -9,7 +9,7 @@
 import numpy as np
 import pytest
 
-# ta-rs 实现
+# talib-rs 实现
 from talib._talib import (
     SMA as RS_SMA, EMA as RS_EMA, RSI as RS_RSI,
     MACD as RS_MACD, BBANDS as RS_BBANDS, ATR as RS_ATR,
@@ -36,11 +36,11 @@ VOLUME = np.random.uniform(1e6, 1e7, N)
 
 
 # ============================================================
-# ta-rs benchmarks (always run)
+# talib-rs benchmarks (always run)
 # ============================================================
 
 class TestTaRsBenchmarks:
-    """ta-rs 性能基准"""
+    """talib-rs 性能基准"""
 
     def test_sma_10k(self, benchmark):
         benchmark(RS_SMA, CLOSE, 20)
@@ -127,7 +127,7 @@ CLOSE_LARGE = 100.0 * np.exp(np.cumsum(np.random.normal(0.0005, 0.02, N_LARGE)))
 
 
 class TestTaRsLargeBenchmarks:
-    """ta-rs 大数据量基准 (100K 条)"""
+    """talib-rs 大数据量基准 (100K 条)"""
 
     def test_sma_100k(self, benchmark):
         benchmark(RS_SMA, CLOSE_LARGE, 20)

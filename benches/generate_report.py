@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-全指标多数据集性能对比: ta-rs vs C TA-Lib
+全指标多数据集性能对比: talib-rs vs C TA-Lib
 生成 Markdown 报告到 BENCHMARK.md
 
 运行: python benches/generate_report.py
@@ -204,11 +204,11 @@ def main():
 
     # ---- 生成 Markdown ----
     lines = []
-    lines.append("# ta-rs vs C TA-Lib 性能对比报告\n")
+    lines.append("# talib-rs vs C TA-Lib 性能对比报告\n")
     lines.append(f"> 自动生成 | 指标数: {len(FUNCS)} | 数据集: 1K / 10K / 100K\n")
     lines.append("")
     lines.append("所有时间单位: **微秒 (μs)**，数值越小越快。")
-    lines.append("**Ratio** = C TA-Lib / ta-rs，>1.0 表示 ta-rs 更快。\n")
+    lines.append("**Ratio** = C TA-Lib / talib-rs，>1.0 表示 talib-rs 更快。\n")
 
     # 按 group 分组
     groups = OrderedDict()
@@ -257,8 +257,8 @@ def main():
                     slower += 1
                 else:
                     equal += 1
-        lines.append(f"**{n//1000}K 数据集**: ta-rs 更快 {faster} 个 | 持平 {equal} 个 | C 更快 {slower} 个 | "
-                     f"总耗时 ta-rs={total_rs:.0f}μs vs C={total_c:.0f}μs\n")
+        lines.append(f"**{n//1000}K 数据集**: talib-rs 更快 {faster} 个 | 持平 {equal} 个 | C 更快 {slower} 个 | "
+                     f"总耗时 talib-rs={total_rs:.0f}μs vs C={total_c:.0f}μs\n")
 
     report = "\n".join(lines) + "\n"
 

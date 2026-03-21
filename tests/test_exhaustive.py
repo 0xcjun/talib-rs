@@ -1,5 +1,5 @@
 """
-155/155 全指标穷尽交叉测试: ta-rs vs C TA-Lib
+155/155 全指标穷尽交叉测试: talib-rs vs C TA-Lib
 
 每个函数用多组数据 × 多参数组合测试:
   - 数值精确一致 (bit-exact, diff=0)

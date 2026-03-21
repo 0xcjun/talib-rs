@@ -1,5 +1,5 @@
 """
-ta-rs: Pure Rust technical analysis library — drop-in replacement for TA-Lib.
+talib-rs: Pure Rust technical analysis library — drop-in replacement for TA-Lib.
 
 Usage:
     import talib

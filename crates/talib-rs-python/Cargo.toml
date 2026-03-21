@@ -1,0 +1,15 @@
+[package]
+name = "talib-rs-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Python bindings for talib-rs — drop-in replacement for TA-Lib"
+
+[lib]
+name = "_talib"
+crate-type = ["cdylib"]
+
+[dependencies]
+talib-rs-core = { path = "../talib-rs-core" }
+pyo3 = { version = "0.23", features = ["extension-module"] }
+numpy = "0.23"

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/ta-rs-core", "crates/ta-rs-python"]
+members = ["crates/talib-rs-core", "crates/talib-rs-python"]
 
 [workspace.package]
 version = "0.1.0"

@@ -1,5 +1,5 @@
 """
-全指标性能基准: ta-rs vs C TA-Lib
+全指标性能基准: talib-rs vs C TA-Lib
 覆盖所有类别的指标，10K 数据量
 
 运行: pytest benches/python_benches/bench_all_indicators.py -v --benchmark-sort=name --benchmark-columns=mean,stddev
@@ -29,11 +29,11 @@ CLOSE2 = 100.0 * np.exp(np.cumsum(np.random.normal(0.0003, 0.025, N)))
 
 
 # ============================================================
-# ta-rs 性能基准
+# talib-rs 性能基准
 # ============================================================
 
 class TestRsBenchAll:
-    """ta-rs 全指标基准 (10K)"""
+    """talib-rs 全指标基准 (10K)"""
 
     # -- Overlap --
     def test_SMA(self, benchmark): benchmark(rs.SMA, CLOSE, 20)

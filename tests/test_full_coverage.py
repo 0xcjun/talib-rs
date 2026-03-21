@@ -3,7 +3,7 @@
 
 数据驱动设计: 每个函数的签名和默认参数记录在 FUNC_REGISTRY 中，
 测试框架自动为每个函数生成:
-  1. 多数据集一致性测试 (ta-rs vs C TA-Lib, rtol=1e-10)
+  1. 多数据集一致性测试 (talib-rs vs C TA-Lib, rtol=1e-10)
   2. 边界条件测试 (最小输入、常数值、大数据集)
   3. 性能基准测试 (10K 数据)
 
@@ -246,7 +246,7 @@ def _build_args(func_name, input_type, params, ds_name):
 
 
 def _call_rs(func_name, pos, kw):
-    """调用 ta-rs 函数"""
+    """调用 talib-rs 函数"""
     func = getattr(rs, func_name)
     return func(*pos, *kw.values())
 
@@ -282,7 +282,7 @@ def _cmp_arr(a, b, name, rtol, atol):
 
 
 # ============================================================
-# 1. 全指标一致性测试 (ta-rs vs C TA-Lib)
+# 1. 全指标一致性测试 (talib-rs vs C TA-Lib)
 # ============================================================
 
 # 排除 MAVP (特殊参数) 和 pattern (单独测试值域)
@@ -380,14 +380,14 @@ class TestPatternEdge:
 
 
 # ============================================================
-# 3. 全指标性能基准 (ta-rs vs C TA-Lib, 10K)
+# 3. 全指标性能基准 (talib-rs vs C TA-Lib, 10K)
 # ============================================================
 
 _BENCH_FUNCS = [f for f in ALL_FUNC_NAMES]
 
 @pytest.mark.parametrize("func_name", _BENCH_FUNCS)
 class TestBenchRs:
-    """ta-rs 10K 性能"""
+    """talib-rs 10K 性能"""
     def test_bench(self, func_name, benchmark):
         input_type, params = FUNC_REGISTRY[func_name]
         try:

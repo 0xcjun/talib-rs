@@ -1,10 +1,10 @@
-# ta-rs vs C TA-Lib 性能对比报告
+# talib-rs vs C TA-Lib 性能对比报告
 
 > 自动生成 | 指标数: 90 | 数据集: 1K / 10K / 100K
 
 
 所有时间单位: **微秒 (μs)**，数值越小越快。
-**Ratio** = C TA-Lib / ta-rs，>1.0 表示 ta-rs 更快。
+**Ratio** = C TA-Lib / talib-rs，>1.0 表示 talib-rs 更快。
 
 
 ## Overlap
@@ -149,16 +149,16 @@
 
 ## 汇总
 
-**1K 数据集**: ta-rs 更快 2 个 | 持平 77 个 | C 更快 11 个 | 总耗时 ta-rs=905μs vs C=905μs
+**1K 数据集**: talib-rs 更快 2 个 | 持平 77 个 | C 更快 11 个 | 总耗时 talib-rs=905μs vs C=905μs
 
-**10K 数据集**: ta-rs 更快 7 个 | 持平 77 个 | C 更快 6 个 | 总耗时 ta-rs=9686μs vs C=9694μs
+**10K 数据集**: talib-rs 更快 7 个 | 持平 77 个 | C 更快 6 个 | 总耗时 talib-rs=9686μs vs C=9694μs
 
-**100K 数据集**: ta-rs 更快 4 个 | 持平 80 个 | C 更快 6 个 | 总耗时 ta-rs=108879μs vs C=108238μs
+**100K 数据集**: talib-rs 更快 4 个 | 持平 80 个 | C 更快 6 个 | 总耗时 talib-rs=108879μs vs C=108238μs
 
 
 ## 算法复杂度对比 (100K 数据, period=10 vs 200)
 
-ta-rs 所有可增量化的指标均已实现 O(n) 算法，与 C TA-Lib 一致。
+talib-rs 所有可增量化的指标均已实现 O(n) 算法，与 C TA-Lib 一致。
 period 增大时两者耗时均保持恒定——算法复杂度完全对齐。
 
 | Indicator | p=10 rs | p=10 C | p=200 rs | p=200 C | 两者 Scale |

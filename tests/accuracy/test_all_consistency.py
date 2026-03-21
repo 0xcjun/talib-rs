@@ -1,5 +1,5 @@
 """
-全指标一致性测试: ta-rs vs C TA-Lib
+全指标一致性测试: talib-rs vs C TA-Lib
 覆盖所有 155 个函数，使用多种数据集对比输出精度。
 
 运行: pytest tests/accuracy/test_all_consistency.py -v
@@ -11,7 +11,7 @@ import pytest
 # ---- C TA-Lib (原版) ----
 import talib as c_talib
 
-# ---- ta-rs (我们的实现) ----
+# ---- talib-rs (我们的实现) ----
 from talib import _talib as rs
 
 # ============================================================

@@ -1,4 +1,4 @@
-"""Overlap Studies 精度验证: ta-rs vs C TA-Lib"""
+"""Overlap Studies 精度验证: talib-rs vs C TA-Lib"""
 
 import numpy as np
 import pytest

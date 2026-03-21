@@ -2,56 +2,98 @@
 //
 // 基于 Hilbert Transform 的周期分析指标，与 TA-Lib 兼容。
 // 所有指标共享相同的 Hilbert Transform 核心算法。
+//
+// 优化：使用环形缓冲区替代全长 Vec，大幅减少内存分配。
+// smooth 需要最多 50 个历史值（dc_phase 内循环），用 64 元素环形缓冲区。
+// detrender/q1/i1/ji/jq 需要最多 6 个历史值，用 8 元素环形缓冲区。
+// i2/q2/re/im 需要最多 1 个历史值，用 8 元素环形缓冲区。
+// period 只需前一个值，用标量。
+// smooth_period 和 dc_phase 需要全长存储（供输出使用）。
 
 use crate::error::{TaError, TaResult};
+
+// ============================================================
+// 环形缓冲区辅助
+// ============================================================
+
+/// 固定大小的环形缓冲区，用 N 为 2 的幂时使用位掩码索引。
+struct RingBuf<const N: usize> {
+    data: [f64; N],
+}
+
+impl<const N: usize> RingBuf<N> {
+    const MASK: usize = N - 1; // N 必须是 2 的幂
+
+    fn new() -> Self {
+        Self { data: [0.0; N] }
+    }
+
+    /// 通过全局索引读取值（自动取模）
+    #[inline(always)]
+    fn get(&self, idx: usize) -> f64 {
+        self.data[idx & Self::MASK]
+    }
+
+    /// 通过全局索引写入值（自动取模）
+    #[inline(always)]
+    fn set(&mut self, idx: usize, val: f64) {
+        self.data[idx & Self::MASK] = val;
+    }
+}
 
 // ============================================================
 // 内部辅助：Hilbert Transform 核心状态机
 // ============================================================
 
-/// Hilbert Transform 核心状态，包含所有中间变量。
-/// 各指标根据需要从中提取不同的输出。
+/// Hilbert Transform 核心状态（优化版）。
+/// 仅 smooth_period 和 dc_phase 使用全长 Vec，其余变量使用环形缓冲区。
 struct HtState {
-    smooth: Vec<f64>,
-    detrender: Vec<f64>,
-    q1: Vec<f64>,
-    i1: Vec<f64>,
-    ji: Vec<f64>,
-    jq: Vec<f64>,
-    i2: Vec<f64>,
-    q2: Vec<f64>,
-    re: Vec<f64>,
-    im: Vec<f64>,
-    period: Vec<f64>,
-    smooth_period: Vec<f64>,
-    dc_phase: Vec<f64>,
+    smooth: RingBuf<64>,       // 需要最多 ~50 个历史值
+    detrender: RingBuf<8>,     // 需要最多 6 个历史值
+    q1: RingBuf<8>,
+    i1: RingBuf<8>,
+    ji: RingBuf<8>,
+    jq: RingBuf<8>,
+    i2: RingBuf<8>,            // 需要最多 1 个历史值
+    q2: RingBuf<8>,
+    re: RingBuf<8>,
+    im: RingBuf<8>,
+    period_prev: f64,          // 只需要前一个 period 值
+    smooth_period: Vec<f64>,   // 全长：供输出使用
+    dc_phase: Vec<f64>,        // 全长：供输出使用
+    // 记录每个 i 的 i1/q1 值供 ht_phasor 使用
+    i1_out: Vec<f64>,
+    q1_out: Vec<f64>,
 }
 
 impl HtState {
-    fn new(len: usize) -> Self {
+    fn new(len: usize, need_phasor: bool) -> Self {
         Self {
-            smooth: vec![0.0; len],
-            detrender: vec![0.0; len],
-            q1: vec![0.0; len],
-            i1: vec![0.0; len],
-            ji: vec![0.0; len],
-            jq: vec![0.0; len],
-            i2: vec![0.0; len],
-            q2: vec![0.0; len],
-            re: vec![0.0; len],
-            im: vec![0.0; len],
-            period: vec![0.0; len],
+            smooth: RingBuf::new(),
+            detrender: RingBuf::new(),
+            q1: RingBuf::new(),
+            i1: RingBuf::new(),
+            ji: RingBuf::new(),
+            jq: RingBuf::new(),
+            i2: RingBuf::new(),
+            q2: RingBuf::new(),
+            re: RingBuf::new(),
+            im: RingBuf::new(),
+            period_prev: 0.0,
             smooth_period: vec![0.0; len],
             dc_phase: vec![0.0; len],
+            i1_out: if need_phasor { vec![0.0; len] } else { Vec::new() },
+            q1_out: if need_phasor { vec![0.0; len] } else { Vec::new() },
         }
     }
 }
 
 /// 执行 Hilbert Transform 核心计算。
 /// compute_dc_phase 控制是否计算 dc_phase（仅 dcphase/sine/trendmode 需要）。
-fn ht_core(input: &[f64], compute_dc_phase: bool) -> HtState {
+/// need_phasor 控制是否保存 i1/q1 全长输出（仅 ht_phasor 需要）。
+fn ht_core(input: &[f64], compute_dc_phase: bool, need_phasor: bool) -> HtState {
     let len = input.len();
-    let mut s = HtState::new(len);
+    let mut s = HtState::new(len, need_phasor);
 
     let a = 0.0962;
     let b = 0.5769;
@@ -59,83 +101,103 @@ fn ht_core(input: &[f64], compute_dc_phase: bool) -> HtState {
     for i in 0..len {
         // Step 1: 平滑价格
         if i >= 3 {
-            s.smooth[i] = (4.0 * input[i] + 3.0 * input[i - 1]
+            let smooth_val = (4.0 * input[i] + 3.0 * input[i - 1]
                 + 2.0 * input[i - 2] + input[i - 3])
                 / 10.0;
+            s.smooth.set(i, smooth_val);
         }
 
         // Step 2-9: Hilbert Transform（需要至少 9 个 bar 的 smooth 数据）
         if i >= 9 {
-            let adj = 0.075 * s.period[i.saturating_sub(1)] + 0.54;
+            let adj = 0.075 * s.period_prev + 0.54;
 
             // Detrender
-            s.detrender[i] = (a * s.smooth[i]
-                + b * s.smooth[i.saturating_sub(2)]
-                - b * s.smooth[i.saturating_sub(4)]
-                - a * s.smooth[i.saturating_sub(6)])
+            let det_val = (a * s.smooth.get(i)
+                + b * s.smooth.get(i.wrapping_sub(2))
+                - b * s.smooth.get(i.wrapping_sub(4))
+                - a * s.smooth.get(i.wrapping_sub(6)))
                 * adj;
+            s.detrender.set(i, det_val);
 
             // Quadrature (Q1) 和 InPhase (I1)
-            s.q1[i] = (a * s.detrender[i]
-                + b * s.detrender[i.saturating_sub(2)]
-                - b * s.detrender[i.saturating_sub(4)]
-                - a * s.detrender[i.saturating_sub(6)])
+            let q1_val = (a * s.detrender.get(i)
+                + b * s.detrender.get(i.wrapping_sub(2))
+                - b * s.detrender.get(i.wrapping_sub(4))
+                - a * s.detrender.get(i.wrapping_sub(6)))
                 * adj;
-            s.i1[i] = s.detrender[i.saturating_sub(3)];
+            s.q1.set(i, q1_val);
+            let i1_val = s.detrender.get(i.wrapping_sub(3));
+            s.i1.set(i, i1_val);
+
+            // 保存 phasor 输出
+            if need_phasor {
+                s.i1_out[i] = i1_val;
+                s.q1_out[i] = q1_val;
+            }
 
             // 推进 90 度相位：jI 和 jQ
-            s.ji[i] = (a * s.i1[i]
-                + b * s.i1[i.saturating_sub(2)]
-                - b * s.i1[i.saturating_sub(4)]
-                - a * s.i1[i.saturating_sub(6)])
+            let ji_val = (a * s.i1.get(i)
+                + b * s.i1.get(i.wrapping_sub(2))
+                - b * s.i1.get(i.wrapping_sub(4))
+                - a * s.i1.get(i.wrapping_sub(6)))
                 * adj;
-            s.jq[i] = (a * s.q1[i]
-                + b * s.q1[i.saturating_sub(2)]
-                - b * s.q1[i.saturating_sub(4)]
-                - a * s.q1[i.saturating_sub(6)])
+            s.ji.set(i, ji_val);
+            let jq_val = (a * s.q1.get(i)
+                + b * s.q1.get(i.wrapping_sub(2))
+                - b * s.q1.get(i.wrapping_sub(4))
+                - a * s.q1.get(i.wrapping_sub(6)))
                 * adj;
+            s.jq.set(i, jq_val);
 
             // Phasor addition
-            s.i2[i] = s.i1[i] - s.jq[i];
-            s.q2[i] = s.q1[i] + s.ji[i];
+            let mut i2_val = s.i1.get(i) - s.jq.get(i);
+            let mut q2_val = s.q1.get(i) + s.ji.get(i);
 
             // 平滑 I2 和 Q2
-            s.i2[i] = 0.2 * s.i2[i] + 0.8 * s.i2[i.saturating_sub(1)];
-            s.q2[i] = 0.2 * s.q2[i] + 0.8 * s.q2[i.saturating_sub(1)];
+            i2_val = 0.2 * i2_val + 0.8 * s.i2.get(i.wrapping_sub(1));
+            q2_val = 0.2 * q2_val + 0.8 * s.q2.get(i.wrapping_sub(1));
+            s.i2.set(i, i2_val);
+            s.q2.set(i, q2_val);
 
             // Homodyne discriminator
-            s.re[i] =
-                s.i2[i] * s.i2[i.saturating_sub(1)] + s.q2[i] * s.q2[i.saturating_sub(1)];
-            s.im[i] =
-                s.i2[i] * s.q2[i.saturating_sub(1)] - s.q2[i] * s.i2[i.saturating_sub(1)];
+            let mut re_val =
+                s.i2.get(i) * s.i2.get(i.wrapping_sub(1)) + s.q2.get(i) * s.q2.get(i.wrapping_sub(1));
+            let mut im_val =
+                s.i2.get(i) * s.q2.get(i.wrapping_sub(1)) - s.q2.get(i) * s.i2.get(i.wrapping_sub(1));
 
-            s.re[i] = 0.2 * s.re[i] + 0.8 * s.re[i.saturating_sub(1)];
-            s.im[i] = 0.2 * s.im[i] + 0.8 * s.im[i.saturating_sub(1)];
+            re_val = 0.2 * re_val + 0.8 * s.re.get(i.wrapping_sub(1));
+            im_val = 0.2 * im_val + 0.8 * s.im.get(i.wrapping_sub(1));
+            s.re.set(i, re_val);
+            s.im.set(i, im_val);
 
             // 计算周期
-            if s.im[i] != 0.0 && s.re[i] != 0.0 {
-                s.period[i] = 2.0 * std::f64::consts::PI / s.im[i].atan2(s.re[i]);
-            }
+            let mut period_val = if im_val != 0.0 && re_val != 0.0 {
+                2.0 * std::f64::consts::PI / im_val.atan2(re_val)
+            } else {
+                0.0
+            };
 
             // 周期限制：相对前值 0.67x ~ 1.5x
-            if s.period[i] > 1.5 * s.period[i.saturating_sub(1)] {
-                s.period[i] = 1.5 * s.period[i.saturating_sub(1)];
+            if period_val > 1.5 * s.period_prev {
+                period_val = 1.5 * s.period_prev;
             }
-            if s.period[i] < 0.67 * s.period[i.saturating_sub(1)] {
-                s.period[i] = 0.67 * s.period[i.saturating_sub(1)];
+            if period_val < 0.67 * s.period_prev {
+                period_val = 0.67 * s.period_prev;
             }
             // 绝对限制：6 ~ 50
-            if s.period[i] < 6.0 {
-                s.period[i] = 6.0;
+            if period_val < 6.0 {
+                period_val = 6.0;
             }
-            if s.period[i] > 50.0 {
-                s.period[i] = 50.0;
+            if period_val > 50.0 {
+                period_val = 50.0;
             }
 
             // 平滑周期
-            s.period[i] = 0.2 * s.period[i] + 0.8 * s.period[i.saturating_sub(1)];
+            period_val = 0.2 * period_val + 0.8 * s.period_prev;
             s.smooth_period[i] =
-                0.33 * s.period[i] + 0.67 * s.smooth_period[i.saturating_sub(1)];
+                0.33 * period_val + 0.67 * s.smooth_period[i.saturating_sub(1)];
+
+            s.period_prev = period_val;
 
             // 计算 DC Phase（仅在需要时）
             if compute_dc_phase {
@@ -148,8 +210,8 @@ fn ht_core(input: &[f64], compute_dc_phase: bool) -> HtState {
                 for j in 0..count {
                     let idx = i - j;
                     let angle = 2.0 * std::f64::consts::PI * j as f64 / dc_period as f64;
-                    real_part += angle.sin() * s.smooth[idx];
-                    imag_part += angle.cos() * s.smooth[idx];
+                    real_part += angle.sin() * s.smooth.get(idx);
+                    imag_part += angle.cos() * s.smooth.get(idx);
                 }
 
                 let mut dc_ph = if imag_part.abs() > 0.0 {
@@ -196,7 +258,7 @@ pub fn ht_dcperiod(input: &[f64]) -> TaResult<Vec<f64>> {
         });
     }
 
-    let s = ht_core(input, false);
+    let s = ht_core(input, false, false);
 
     let mut output = vec![f64::NAN; len];
     for i in lookback..len {
@@ -221,7 +283,7 @@ pub fn ht_dcphase(input: &[f64]) -> TaResult<Vec<f64>> {
         });
     }
 
-    let s = ht_core(input, true);
+    let s = ht_core(input, true, false);
 
     let mut output = vec![f64::NAN; len];
     for i in lookback..len {
@@ -246,13 +308,13 @@ pub fn ht_phasor(input: &[f64]) -> TaResult<(Vec<f64>, Vec<f64>)> {
         });
     }
 
-    let s = ht_core(input, false);
+    let s = ht_core(input, false, true);
 
     let mut inphase = vec![f64::NAN; len];
     let mut quadrature = vec![f64::NAN; len];
     for i in lookback..len {
-        inphase[i] = s.i1[i];
-        quadrature[i] = s.q1[i];
+        inphase[i] = s.i1_out[i];
+        quadrature[i] = s.q1_out[i];
     }
 
     Ok((inphase, quadrature))
@@ -274,7 +336,7 @@ pub fn ht_sine(input: &[f64]) -> TaResult<(Vec<f64>, Vec<f64>)> {
         });
     }
 
-    let s = ht_core(input, true);
+    let s = ht_core(input, true, false);
 
     let mut sine = vec![f64::NAN; len];
     let mut leadsine = vec![f64::NAN; len];
@@ -304,7 +366,7 @@ pub fn ht_trendmode(input: &[f64]) -> TaResult<Vec<i32>> {
         });
     }
 
-    let s = ht_core(input, true);
+    let s = ht_core(input, true, false);
 
     let mut output = vec![0_i32; len];
 

@@ -73,6 +73,7 @@ fn validate_pair(a: &[f64], b: &[f64]) -> TaResult<()> {
     Ok(())
 }
 
+/// O(n) 单调队列实现的滑动窗口极值
 fn sliding_extreme(input: &[f64], timeperiod: usize, is_max: bool) -> TaResult<Vec<f64>> {
     if timeperiod == 0 {
         return Err(TaError::InvalidParameter {
@@ -85,18 +86,20 @@ fn sliding_extreme(input: &[f64], timeperiod: usize, is_max: bool) -> TaResult<V
     }
     let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
-    for i in lookback..len {
-        let start = i + 1 - timeperiod;
-        let val = if is_max {
-            input[start..=i].iter().cloned().fold(f64::NEG_INFINITY, f64::max)
-        } else {
-            input[start..=i].iter().cloned().fold(f64::INFINITY, f64::min)
-        };
-        output[i] = val;
+
+    let results = if is_max {
+        crate::sliding_window::sliding_max(input, timeperiod)
+    } else {
+        crate::sliding_window::sliding_min(input, timeperiod)
+    };
+
+    for (j, i) in (lookback..len).enumerate() {
+        output[i] = results[j].0;
     }
     Ok(output)
 }
 
+/// O(n) 单调队列实现的滑动窗口极值索引
 fn sliding_extreme_index(input: &[f64], timeperiod: usize, is_max: bool) -> TaResult<Vec<f64>> {
     if timeperiod == 0 {
         return Err(TaError::InvalidParameter {
@@ -109,17 +112,15 @@ fn sliding_extreme_index(input: &[f64], timeperiod: usize, is_max: bool) -> TaRe
     }
     let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
-    for i in lookback..len {
-        let start = i + 1 - timeperiod;
-        let mut extreme_idx = start;
-        for j in (start + 1)..=i {
-            if is_max {
-                if input[j] >= input[extreme_idx] { extreme_idx = j; }
-            } else {
-                if input[j] <= input[extreme_idx] { extreme_idx = j; }
-            }
-        }
-        output[i] = extreme_idx as f64;
+
+    let results = if is_max {
+        crate::sliding_window::sliding_max(input, timeperiod)
+    } else {
+        crate::sliding_window::sliding_min(input, timeperiod)
+    };
+
+    for (j, i) in (lookback..len).enumerate() {
+        output[i] = results[j].1 as f64;
     }
     Ok(output)
 }

@@ -1,10 +1,12 @@
 use crate::error::{TaError, TaResult};
-use crate::overlap::ema::ema_core;
+use crate::simd::sum_f64;
 
 /// Double Exponential Moving Average (DEMA)
 ///
 /// DEMA = 2 * EMA(input) - EMA(EMA(input))
 /// lookback = 2 * (timeperiod - 1)
+///
+/// 优化版本：两次 EMA 在原地计算，无需中间 Vec 分配。
 pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     if timeperiod < 2 {
         return Err(TaError::InvalidParameter {
@@ -23,28 +25,31 @@ pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     }
 
     let k = 2.0 / (timeperiod as f64 + 1.0);
+    let one_minus_k = 1.0 - k;
+    let p = timeperiod - 1; // EMA1 的 lookback
 
-    // 第一次 EMA
-    let ema1 = ema_core(input, timeperiod, k)?;
+    // EMA1: 对 input 做 EMA，结果存入 ema1 数组
+    let mut ema1 = vec![f64::NAN; len];
+    let seed1 = sum_f64(&input[..timeperiod]) / timeperiod as f64;
+    ema1[p] = seed1;
+    for i in timeperiod..len {
+        ema1[i] = input[i] * k + ema1[i - 1] * one_minus_k;
+    }
 
-    // 收集非 NaN 值，进行第二次 EMA
-    let ema1_valid: Vec<f64> = ema1.iter().copied().filter(|v| !v.is_nan()).collect();
-    let ema2_valid = ema_core(&ema1_valid, timeperiod, k)?;
+    // EMA2: 对 ema1[p..] 的有效值做 EMA，无需额外分配
+    // EMA2 的 SMA seed = mean(ema1[p .. p + timeperiod]) = mean(ema1[p .. 2p + 1])
+    let ema2_seed_start = p;
+    let ema2_seed_end = 2 * p + 1; // exclusive: p + timeperiod = p + p + 1 = 2p + 1
+    let seed2 = sum_f64(&ema1[ema2_seed_start..ema2_seed_end]) / timeperiod as f64;
 
-    // 构建输出: DEMA = 2*EMA1 - EMA2
     let mut output = vec![f64::NAN; len];
-    let ema2_start = timeperiod - 1; // ema2_valid 中第一个非 NaN 的位置
-    let output_start = lookback;
+    let mut ema2_prev = seed2;
+    // 第一个 DEMA 输出在 index = lookback = 2*p
+    output[lookback] = 2.0 * ema1[lookback] - ema2_prev;
 
-    for i in 0..(len - output_start) {
-        let e1 = ema1[output_start + i]; // ema1[lookback + i]
-        let e2_idx = ema2_start + i;
-        if e2_idx < ema2_valid.len() {
-            let e2 = ema2_valid[e2_idx];
-            if !e2.is_nan() {
-                output[output_start + i] = 2.0 * e1 - e2;
-            }
-        }
+    for i in (lookback + 1)..len {
+        ema2_prev = ema1[i] * k + ema2_prev * one_minus_k;
+        output[i] = 2.0 * ema1[i] - ema2_prev;
     }
 
     Ok(output)

@@ -3,6 +3,7 @@ pub mod common;
 pub mod traits;
 pub mod ma_type;
 pub mod simd;
+pub mod sliding_window;
 
 pub mod overlap;
 pub mod momentum;

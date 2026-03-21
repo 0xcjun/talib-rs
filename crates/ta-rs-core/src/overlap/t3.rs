@@ -1,5 +1,5 @@
 use crate::error::{TaError, TaResult};
-use crate::overlap::ema::ema_core;
+use crate::simd::sum_f64;
 
 /// T3 Triple Exponential Moving Average (Tillson)
 ///
@@ -7,6 +7,8 @@ use crate::overlap::ema::ema_core;
 /// 其中 EMA_n 是 n 次 EMA 嵌套, v_factor 默认 0.7
 /// c1 = -v^3, c2 = 3v^2 + 3v^3, c3 = -6v^2 - 3v - 3v^3, c4 = 1 + 3v + v^3 + 3v^2
 /// lookback = 6 * (timeperiod - 1)
+///
+/// 优化版本：6 次 EMA 逐层计算，无需中间 Vec 分配（filter NaN）。
 pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>> {
     if timeperiod < 2 {
         return Err(TaError::InvalidParameter {
@@ -25,19 +27,38 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     }
 
     let k = 2.0 / (timeperiod as f64 + 1.0);
+    let one_minus_k = 1.0 - k;
+    let p = timeperiod - 1;
 
-    // 6 重 EMA 嵌套
-    let e1 = ema_core(input, timeperiod, k)?;
-    let e1v: Vec<f64> = e1.iter().copied().filter(|v| !v.is_nan()).collect();
-    let e2 = ema_core(&e1v, timeperiod, k)?;
-    let e2v: Vec<f64> = e2.iter().copied().filter(|v| !v.is_nan()).collect();
-    let e3 = ema_core(&e2v, timeperiod, k)?;
-    let e3v: Vec<f64> = e3.iter().copied().filter(|v| !v.is_nan()).collect();
-    let e4 = ema_core(&e3v, timeperiod, k)?;
-    let e4v: Vec<f64> = e4.iter().copied().filter(|v| !v.is_nan()).collect();
-    let e5 = ema_core(&e4v, timeperiod, k)?;
-    let e5v: Vec<f64> = e5.iter().copied().filter(|v| !v.is_nan()).collect();
-    let e6 = ema_core(&e5v, timeperiod, k)?;
+    // 辅助：计算一层 EMA，从 start_idx 开始（前一层有效值起始处）
+    // 返回完整长度数组，仅 [start_idx + p ..] 有效
+    let compute_ema_layer = |prev_layer: &[f64], start_idx: usize| -> Vec<f64> {
+        let mut ema = vec![f64::NAN; len];
+        let seed = sum_f64(&prev_layer[start_idx..(start_idx + timeperiod)]) / timeperiod as f64;
+        let new_start = start_idx + p;
+        ema[new_start] = seed;
+        for i in (new_start + 1)..len {
+            ema[i] = prev_layer[i] * k + ema[i - 1] * one_minus_k;
+        }
+        ema
+    };
+
+    // EMA1: 对 input 做 EMA，有效值从 index p 开始
+    let mut e1 = vec![f64::NAN; len];
+    let seed1 = sum_f64(&input[..timeperiod]) / timeperiod as f64;
+    e1[p] = seed1;
+    for i in timeperiod..len {
+        e1[i] = input[i] * k + e1[i - 1] * one_minus_k;
+    }
+
+    // EMA2 ~ EMA5: 每层从前一层有效值起始处开始
+    let e2 = compute_ema_layer(&e1, p);       // 有效从 2p
+    let e3 = compute_ema_layer(&e2, 2 * p);   // 有效从 3p
+    let e4 = compute_ema_layer(&e3, 3 * p);   // 有效从 4p
+    let e5 = compute_ema_layer(&e4, 4 * p);   // 有效从 5p
+
+    // EMA6: 只需要标量跟踪（最后一层），不需要完整数组
+    let seed6 = sum_f64(&e5[(5 * p)..(5 * p + timeperiod)]) / timeperiod as f64;
 
     // T3 系数
     let v = v_factor;
@@ -49,29 +70,13 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     let c4 = 1.0 + 3.0 * v + v3 + 3.0 * v2;
 
     let mut output = vec![f64::NAN; len];
-    let p = timeperiod - 1;
+    let mut e6_prev = seed6;
+    // 第一个输出在 index = lookback = 6*p
+    output[lookback] = c1 * e6_prev + c2 * e5[lookback] + c3 * e4[lookback] + c4 * e3[lookback];
 
-    for i in lookback..len {
-        let idx3 = i - p;
-        let idx3_local = idx3 - p;
-        let idx4_local = idx3_local - p;
-        let idx5_local = idx4_local - p;
-        let idx6_local = idx5_local - p;
-
-        if idx3_local < e3.len()
-            && idx4_local < e4.len()
-            && idx5_local < e5.len()
-            && idx6_local < e6.len()
-        {
-            let e3_val = e3[idx3_local];
-            let e4_val = e4[idx4_local];
-            let e5_val = e5[idx5_local];
-            let e6_val = e6[idx6_local];
-
-            if !e3_val.is_nan() && !e4_val.is_nan() && !e5_val.is_nan() && !e6_val.is_nan() {
-                output[i] = c1 * e6_val + c2 * e5_val + c3 * e4_val + c4 * e3_val;
-            }
-        }
+    for i in (lookback + 1)..len {
+        e6_prev = e5[i] * k + e6_prev * one_minus_k;
+        output[i] = c1 * e6_prev + c2 * e5[i] + c3 * e4[i] + c4 * e3[i];
     }
 
     Ok(output)

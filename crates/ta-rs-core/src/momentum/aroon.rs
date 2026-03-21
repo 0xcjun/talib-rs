@@ -1,6 +1,7 @@
 use crate::error::{TaError, TaResult};
+use crate::sliding_window::{sliding_max, sliding_min};
 
-/// Aroon (AROON)
+/// Aroon (AROON) — O(n) 单调队列算法
 ///
 /// 返回 (aroon_down, aroon_up)
 /// Aroon Up = 100 * (period - bars since highest high) / period
@@ -32,24 +33,19 @@ pub fn aroon(
         });
     }
 
+    let period_f = timeperiod as f64;
+    let window = timeperiod + 1; // AROON 的窗口包含当前 bar
+
+    // O(n) 单调队列找每个窗口的最大/最小索引
+    let max_results = sliding_max(high, window);
+    let min_results = sliding_min(low, window);
+
     let mut aroon_down = vec![f64::NAN; len];
     let mut aroon_up = vec![f64::NAN; len];
-    let period_f = timeperiod as f64;
 
-    for i in timeperiod..len {
-        let start = i - timeperiod;
-        let mut highest_idx = start;
-        let mut lowest_idx = start;
-
-        for j in (start + 1)..=i {
-            if high[j] >= high[highest_idx] {
-                highest_idx = j;
-            }
-            if low[j] <= low[lowest_idx] {
-                lowest_idx = j;
-            }
-        }
-
+    for (j, i) in (timeperiod..len).enumerate() {
+        let (_, highest_idx) = max_results[j];
+        let (_, lowest_idx) = min_results[j];
         aroon_up[i] = 100.0 * (period_f - (i - highest_idx) as f64) / period_f;
         aroon_down[i] = 100.0 * (period_f - (i - lowest_idx) as f64) / period_f;
     }
@@ -57,7 +53,7 @@ pub fn aroon(
     Ok((aroon_down, aroon_up))
 }
 
-/// Aroon Oscillator
+/// Aroon Oscillator — O(n)
 ///
 /// AROONOSC = Aroon Up - Aroon Down
 pub fn aroon_osc(

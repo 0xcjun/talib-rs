@@ -1,0 +1,18 @@
+name: Release Crate
+
+on:
+  push:
+    tags: ["crate-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to Crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p talib-rs
+      - run: cargo publish -p talib-rs --token ${{ secrets.CARGO_REGISTRY_TOKEN }}

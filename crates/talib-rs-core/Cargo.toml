@@ -1,9 +1,13 @@
 [package]
-name = "talib-rs-core"
+name = "talib-rs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Pure Rust technical analysis library — drop-in replacement for TA-Lib"
+repository.workspace = true
+readme = "../../README.md"
+keywords = ["technical-analysis", "finance", "trading", "ta-lib"]
+categories = ["science", "mathematics"]
 
 [dependencies]
 thiserror.workspace = true

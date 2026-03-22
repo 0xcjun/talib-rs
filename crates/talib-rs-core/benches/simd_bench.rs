@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use talib_rs_core::simd;
+use talib_rs::simd;
 
 fn bench_sum(c: &mut Criterion) {
     let mut group = c.benchmark_group("sum_f64");
@@ -89,27 +89,27 @@ fn bench_indicators(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("indicators_10k");
     group.bench_function("SMA_20", |b| {
-        b.iter(|| talib_rs_core::overlap::sma(black_box(&close), 20));
+        b.iter(|| talib_rs::overlap::sma(black_box(&close), 20));
     });
     group.bench_function("EMA_20", |b| {
-        b.iter(|| talib_rs_core::overlap::ema(black_box(&close), 20));
+        b.iter(|| talib_rs::overlap::ema(black_box(&close), 20));
     });
     group.bench_function("RSI_14", |b| {
-        b.iter(|| talib_rs_core::momentum::rsi(black_box(&close), 14));
+        b.iter(|| talib_rs::momentum::rsi(black_box(&close), 14));
     });
     group.bench_function("BBANDS_20", |b| {
         b.iter(|| {
-            talib_rs_core::overlap::bbands(
+            talib_rs::overlap::bbands(
                 black_box(&close),
                 20,
                 2.0,
                 2.0,
-                talib_rs_core::MaType::Sma,
+                talib_rs::MaType::Sma,
             )
         });
     });
     group.bench_function("STDDEV_20", |b| {
-        b.iter(|| talib_rs_core::statistic::stddev(black_box(&close), 20, 1.0));
+        b.iter(|| talib_rs::statistic::stddev(black_box(&close), 20, 1.0));
     });
     group.finish();
 }

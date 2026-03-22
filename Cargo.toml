@@ -5,7 +5,8 @@ members = ["crates/talib-rs-core", "crates/talib-rs-python"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "BSD-3-Clause"
+repository = "https://github.com/0xcjun/talib-rs"
 
 [workspace.dependencies]
 thiserror = "2"

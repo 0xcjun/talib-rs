@@ -1,6 +1,6 @@
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
-use talib_rs_core as core;
+use talib_rs as core;
 
 use crate::conversion::to_py_array;
 

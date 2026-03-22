@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/tests-600%2B-green" alt="600+ tests" />
   <img src="https://img.shields.io/badge/precision-bit--exact-brightgreen" alt="bit-exact" />
   <img src="https://img.shields.io/badge/C_deps-zero-orange" alt="zero C deps" />
-  <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT" />
+  <img src="https://img.shields.io/badge/license-BSD--3--Clause-lightgrey" alt="BSD-3-Clause" />
 </p>
 
 ---
@@ -270,4 +270,4 @@ python benches/generate_report.py      # 生成 BENCHMARK.md
 
 ## 许可证
 
-MIT
+BSD-3-Clause

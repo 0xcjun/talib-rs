@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 try:
-    import talib_rs as original_talib
+    import talib as original_talib
     HAS_ORIGINAL = True
 except ImportError:
     HAS_ORIGINAL = False

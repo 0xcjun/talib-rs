@@ -5,7 +5,7 @@ import pytest
 
 # 尝试导入原版 TA-Lib 用于对比
 try:
-    import talib_rs as original_talib
+    import talib as original_talib
     HAS_ORIGINAL = True
 except ImportError:
     HAS_ORIGINAL = False

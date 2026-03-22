@@ -19,7 +19,7 @@ from talib_rs._talib import (
 
 # 尝试导入原版
 try:
-    import talib_rs as orig
+    import talib as orig
     HAS_ORIGINAL = True
 except ImportError:
     HAS_ORIGINAL = False

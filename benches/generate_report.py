@@ -12,7 +12,7 @@ import numpy as np
 from collections import OrderedDict
 from pathlib import Path
 
-import talib_rs as c_talib
+import talib as c_talib
 from talib_rs import _talib as rs
 
 # ============================================================

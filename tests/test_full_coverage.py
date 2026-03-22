@@ -17,7 +17,7 @@
 import numpy as np
 import pytest
 
-import talib_rs as c_talib
+import talib as c_talib
 from talib_rs import _talib as rs
 
 # ============================================================

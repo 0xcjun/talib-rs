@@ -17,8 +17,8 @@
 import numpy as np
 import pytest
 
-import talib as c_talib
-from talib import _talib as rs
+import talib_rs as c_talib
+from talib_rs import _talib as rs
 
 # ============================================================
 # 函数注册表: 每个函数的输入类型和默认参数

@@ -5,17 +5,17 @@ import pytest
 
 # 尝试导入原版 TA-Lib 用于对比
 try:
-    import talib as original_talib
+    import talib_rs as original_talib
     HAS_ORIGINAL = True
 except ImportError:
     HAS_ORIGINAL = False
 
 # 我们的实现（总是可用）
 import sys
-sys.modules.pop('talib', None)  # 清理以避免冲突
+sys.modules.pop('talib_rs', None)  # 清理以避免冲突
 
 # 直接导入我们的 _talib 模块
-from talib._talib import (
+from talib_rs._talib import (
     SMA, EMA, WMA, DEMA, TEMA, TRIMA, KAMA, T3,
     BBANDS, SAR, MIDPOINT, MIDPRICE, HT_TRENDLINE,
 )

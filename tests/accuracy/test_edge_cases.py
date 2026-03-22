@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from talib import _talib as rs
+from talib_rs import _talib as rs
 
 
 # ============================================================

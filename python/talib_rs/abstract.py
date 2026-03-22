@@ -2,7 +2,7 @@
 Abstract API -- compatible with the original talib.abstract module.
 
 Usage:
-    from talib.abstract import SMA, RSI, MACD
+    from talib_rs.abstract import SMA, RSI, MACD
 
     # Call with a dict of arrays (pandas DataFrame also works)
     output = SMA({'close': close_array}, timeperiod=25)
@@ -21,8 +21,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-import talib._talib as _talib
-from talib._talib import get_functions, get_function_groups  # noqa: F401
+import talib_rs._talib as _talib
+from talib_rs._talib import get_functions, get_function_groups  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Internal metadata registry
@@ -710,7 +710,7 @@ class Function:
 
 
 # ---------------------------------------------------------------------------
-# Module-level attribute access: ``from talib.abstract import SMA``
+# Module-level attribute access: ``from talib_rs.abstract import SMA``
 # ---------------------------------------------------------------------------
 # We create pre-instantiated Function objects for every registered function
 # and expose them as module attributes.
@@ -721,7 +721,7 @@ def _make_func(name):
     return Function(name)
 
 
-# Populate module namespace so that ``from talib.abstract import SMA`` works.
+# Populate module namespace so that ``from talib_rs.abstract import SMA`` works.
 _this_module = __import__(__name__)
 for _fname in _FUNC_INFO:
     globals()[_fname] = _make_func(_fname)
@@ -738,4 +738,4 @@ def __getattr__(name):
         func = _make_func(upper)
         globals()[name] = func
         return func
-    raise AttributeError(f"module 'talib.abstract' has no attribute {name!r}")
+    raise AttributeError(f"module 'talib_rs.abstract' has no attribute {name!r}")

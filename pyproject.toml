@@ -19,5 +19,5 @@ dependencies = ["numpy>=1.20"]
 [tool.maturin]
 manifest-path = "crates/talib-rs-python/Cargo.toml"
 python-source = "python"
-module-name = "talib._talib"
+module-name = "talib_rs._talib"
 features = ["pyo3/extension-module"]

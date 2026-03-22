@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 # talib-rs 实现
-from talib._talib import (
+from talib_rs._talib import (
     SMA as RS_SMA, EMA as RS_EMA, RSI as RS_RSI,
     MACD as RS_MACD, BBANDS as RS_BBANDS, ATR as RS_ATR,
     ADX as RS_ADX, STOCH as RS_STOCH, CCI as RS_CCI,
@@ -19,7 +19,7 @@ from talib._talib import (
 
 # 尝试导入原版
 try:
-    import talib as orig
+    import talib_rs as orig
     HAS_ORIGINAL = True
 except ImportError:
     HAS_ORIGINAL = False

@@ -6,7 +6,7 @@ mod conversion;
 mod func_api;
 mod metadata;
 
-/// Python 模块入口 — `talib._talib`
+/// Python 模块入口 — `talib_rs._talib`
 #[pymodule]
 fn _talib(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // 元数据 API

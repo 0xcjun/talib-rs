@@ -57,7 +57,7 @@ pip install talib-rs
 ### 函数 API (与 TA-Lib 兼容)
 
 ```python
-import talib
+import talib_rs as talib
 import numpy as np
 
 close = np.random.random(1000) * 100
@@ -83,7 +83,7 @@ print(talib.get_function_groups().keys())
 ### 抽象 API
 
 ```python
-from talib.abstract import Function
+from talib_rs.abstract import Function
 
 # 带内省的函数对象
 rsi = Function('RSI')
@@ -100,14 +100,14 @@ rsi.parameters = {'timeperiod': 21}
 result = rsi(data)
 
 # 单行导入
-from talib.abstract import SMA, MACD, BBANDS
+from talib_rs.abstract import SMA, MACD, BBANDS
 sma_result = SMA(data, timeperiod=50)
 ```
 
 ### 流式 API
 
 ```python
-from talib import stream
+from talib_rs import stream
 
 # 仅返回最新值（标量），非完整数组
 latest_rsi  = stream.RSI(close, timeperiod=14)          # float
@@ -216,8 +216,8 @@ talib-rs/
 │           ├── metadata.rs            # get_functions(), get_function_groups()
 │           └── conversion.rs          # 零拷贝 NumPy ↔ Rust
 │
-├── python/talib/
-│   ├── __init__.py                    # 直接替换: import talib
+├── python/talib_rs/
+│   ├── __init__.py                    # import talib_rs as talib
 │   ├── abstract.py                    # Function 类 + 内省
 │   └── stream.py                      # 流式计算封装
 │
@@ -236,7 +236,7 @@ talib-rs/
 | Hilbert Transform | 环形缓冲区 | 10 个 Vec → 固定 [f64; 64]，堆分配减少 80% |
 | EMA/DEMA/TEMA/T3 | 就地分层 | 消除 NaN 过滤产生的中间 Vec |
 | WMA | 增量递推 | WS_new = WS_old − S_old + p×x_new, 每步 O(1) |
-| Python 模块名 | `talib` | 真正的 drop-in: `import talib` 无需改代码 |
+| Python 模块名 | `talib_rs` | `import talib_rs as talib` 即可替换使用 |
 | 输出格式 | `Vec<f64>` → `PyArray1` | 所有权转移，接近零拷贝 |
 
 ## 从 C TA-Lib 迁移
@@ -248,7 +248,7 @@ pip uninstall TA-Lib
 # 安装 talib-rs
 pip install talib-rs
 
-# 无需修改任何代码 — import talib 完全兼容
+# 更新导入: import talib_rs as talib
 ```
 
 ## 开发

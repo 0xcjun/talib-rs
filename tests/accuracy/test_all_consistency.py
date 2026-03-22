@@ -9,10 +9,10 @@ import numpy as np
 import pytest
 
 # ---- C TA-Lib (原版) ----
-import talib as c_talib
+import talib_rs as c_talib
 
 # ---- talib-rs (我们的实现) ----
-from talib import _talib as rs
+from talib_rs import _talib as rs
 
 # ============================================================
 # 测试数据集

@@ -57,7 +57,7 @@ No C compiler, no system libraries, no build failures. Pre-built wheels for Linu
 ### Function API (TA-Lib compatible)
 
 ```python
-import talib
+import talib_rs as talib
 import numpy as np
 
 close = np.random.random(1000) * 100
@@ -90,7 +90,7 @@ print(talib.get_function_groups().keys())
 ### Abstract API
 
 ```python
-from talib.abstract import Function
+from talib_rs.abstract import Function
 
 # Create function with introspection
 rsi = Function('RSI')
@@ -109,14 +109,14 @@ rsi.parameters = {'timeperiod': 21}
 result = rsi(data)
 
 # One-liner imports
-from talib.abstract import SMA, MACD, BBANDS
+from talib_rs.abstract import SMA, MACD, BBANDS
 sma_result = SMA(data, timeperiod=50)
 ```
 
 ### Stream API
 
 ```python
-from talib import stream
+from talib_rs import stream
 
 # Returns only the latest value (scalar), not the full array
 latest_rsi  = stream.RSI(close, timeperiod=14)          # float
@@ -254,8 +254,8 @@ talib-rs/
 │           ├── metadata.rs            # get_functions(), get_function_groups()
 │           └── conversion.rs          # Zero-copy NumPy ↔ Rust
 │
-├── python/talib/
-│   ├── __init__.py                    # Drop-in: import talib
+├── python/talib_rs/
+│   ├── __init__.py                    # import talib_rs as talib
 │   ├── abstract.py                    # Function class with introspection
 │   └── stream.py                      # Latest-value-only wrappers
 │
@@ -283,7 +283,7 @@ talib-rs/
 | Hilbert Transform | Ring buffer | 10 Vec → fixed [f64; 64], 80% less heap allocation |
 | EMA/DEMA/TEMA/T3 | In-place layered | No intermediate Vec from NaN filtering |
 | WMA | Incremental recurrence | WS_new = WS_old − S_old + p×x_new, O(1) per step |
-| Python module name | `talib` | True drop-in: `import talib` works unchanged |
+| Python module name | `talib_rs` | `import talib_rs as talib` for drop-in usage |
 | Output format | `Vec<f64>` → `PyArray1` | Ownership transfer, near-zero-copy |
 | NaN convention | Fill lookback with NaN | Matches C TA-Lib exactly |
 
@@ -329,7 +329,7 @@ pip uninstall TA-Lib
 # Install talib-rs
 pip install talib-rs
 
-# No code changes needed — import talib works identically
+# Update imports: import talib_rs as talib
 ```
 
 ## License

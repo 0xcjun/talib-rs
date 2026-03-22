@@ -11,8 +11,8 @@
 
 import numpy as np
 import pytest
-import talib as c_talib
-from talib import _talib as rs
+import talib_rs as c_talib
+from talib_rs import _talib as rs
 
 # ============================================================
 # 数据准备

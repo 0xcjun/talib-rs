@@ -6,7 +6,7 @@ the same arguments as the regular (batch) API but returns only the most
 recent output value(s) instead of a full array.
 
 Usage:
-    from talib import stream
+    from talib_rs import stream
     latest_sma = stream.SMA(close, timeperiod=20)   # single float
     macd, signal, hist = stream.MACD(close)          # tuple of floats
 """
@@ -14,7 +14,7 @@ Usage:
 from __future__ import annotations
 
 import numpy as np
-import talib._talib as _talib
+import talib_rs._talib as _talib
 
 
 def _last(result):

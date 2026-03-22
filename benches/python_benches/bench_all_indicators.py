@@ -8,10 +8,10 @@
 import numpy as np
 import pytest
 
-from talib import _talib as rs
+from talib_rs import _talib as rs
 
 try:
-    import talib as c_talib
+    import talib_rs as c_talib
     HAS_C = True
 except ImportError:
     HAS_C = False

@@ -2,7 +2,7 @@
 talib-rs: Pure Rust technical analysis library — drop-in replacement for TA-Lib.
 
 Usage:
-    import talib
+    import talib_rs as talib
     import numpy as np
 
     close = np.random.random(100)
@@ -12,8 +12,8 @@ Usage:
 """
 
 # 从 Rust 扩展导入所有函数
-from talib._talib import *  # noqa: F401, F403
-from talib._talib import get_functions, get_function_groups
+from talib_rs._talib import *  # noqa: F401, F403
+from talib_rs._talib import get_functions, get_function_groups
 
 __version__ = "0.1.0"
 __ta_version__ = "0.6.4"

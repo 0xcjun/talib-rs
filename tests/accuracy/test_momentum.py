@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 
 try:
-    import talib as original_talib
+    import talib_rs as original_talib
     HAS_ORIGINAL = True
 except ImportError:
     HAS_ORIGINAL = False
 
-from talib._talib import RSI, MACD, STOCH, ADX, CCI, MOM, ROC, WILLR, CMO, AROON
+from talib_rs._talib import RSI, MACD, STOCH, ADX, CCI, MOM, ROC, WILLR, CMO, AROON
 from conftest import make_close, make_ohlcv, assert_talib_equal
 
 

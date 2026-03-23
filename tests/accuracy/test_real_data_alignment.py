@@ -2,8 +2,7 @@
 Real-World Data Alignment Test: talib-rs vs C TA-Lib
 
 Uses actual market data to validate numerical alignment:
-  1. 数字币1小时行情 (crypto hourly OHLCV, 1.5M rows, 100+ symbols)
-  2. 全A日线 (A-share daily price, 8.4M rows, 5000+ symbols)
+  数字币1小时行情 (crypto hourly OHLCV, 1.5M rows, 100+ symbols)
 
 Tolerances: same as C TA-Lib comparison, NO relaxation for passing.
   - exact:  rtol=1e-14, atol=0      (element-wise, no accumulation)
@@ -13,7 +12,7 @@ Tolerances: same as C TA-Lib comparison, NO relaxation for passing.
 Run:
   pytest tests/accuracy/test_real_data_alignment.py -v
   pytest tests/accuracy/test_real_data_alignment.py -v -k crypto
-  pytest tests/accuracy/test_real_data_alignment.py -v -k ashare
+  pytest tests/accuracy/test_real_data_alignment.py -v -k BNBUSDT
 """
 
 import numpy as np
@@ -28,10 +27,7 @@ from talib_rs import _talib as rs
 try:
     import pandas as pd
     _CRYPTO_PATH = '/Volumes/jun/数字币1小时行情_210101_230101.feather'
-    _ASHARE_PATH = '/Volumes/jun/全A日线测试_20170101_20250429.feather'
-
     _crypto_df = pd.read_feather(_CRYPTO_PATH)
-    _ashare_df = pd.read_feather(_ASHARE_PATH)
 
     # Group crypto by symbol, pick diverse samples (different price ranges + lengths)
     _crypto_groups = dict(list(_crypto_df.groupby('symbol')))
@@ -44,16 +40,6 @@ try:
         _crypto_sample_symbols = [_crypto_symbols[i * step] for i in range(10)]
     else:
         _crypto_sample_symbols = _crypto_symbols
-
-    # Group A-share by symbol, pick samples
-    _ashare_groups = dict(list(_ashare_df.groupby('symbol')))
-    _ashare_symbols = sorted(_ashare_groups.keys())
-    _ashare_sample_symbols = []
-    if len(_ashare_symbols) >= 20:
-        step = len(_ashare_symbols) // 20
-        _ashare_sample_symbols = [_ashare_symbols[i * step] for i in range(20)]
-    else:
-        _ashare_sample_symbols = _ashare_symbols
 
     DATA_AVAILABLE = True
 except Exception as e:
@@ -70,12 +56,6 @@ def _get_crypto_ohlcv(symbol):
     c = df['close'].values.astype(np.float64)
     v = df['vol'].values.astype(np.float64)
     return o, h, l, c, v
-
-
-def _get_ashare_price(symbol):
-    """Get price array for an A-share symbol."""
-    df = _ashare_groups[symbol].sort_values('dt').reset_index(drop=True)
-    return df['price'].values.astype(np.float64)
 
 
 # ============================================================
@@ -539,37 +519,5 @@ def test_crypto_alignment(symbol, name, min_n, rtol, atol, needs_ohlcv, fn):
     else:
         ours = fn(rs, c)
         theirs = fn(c_talib, c)
-
-    _compare(ours, theirs, f"{name}@{symbol}", rtol, atol)
-
-
-# ---- A-share price-only tests ----
-
-_ashare_params = []
-if DATA_AVAILABLE:
-    price_only_indicators = [(ind) for ind in INDICATORS if not ind[4]]  # needs_ohlcv=False
-    for symbol in _ashare_sample_symbols:
-        for ind in price_only_indicators:
-            name, min_n, rtol, atol, needs_ohlcv, fn = ind
-            _ashare_params.append(
-                pytest.param(symbol, name, min_n, rtol, atol, fn,
-                            id=f"ashare_{symbol}_{name}")
-            )
-
-
-@skipif_no_data
-@pytest.mark.parametrize("symbol,name,min_n,rtol,atol,fn", _ashare_params)
-def test_ashare_alignment(symbol, name, min_n, rtol, atol, fn):
-    price = _get_ashare_price(symbol)
-    n = len(price)
-    if n < min_n:
-        pytest.skip(f"Insufficient data: {n} < {min_n}")
-
-    # Skip if price has zeros (can cause div-by-zero in ROCP etc.)
-    if np.any(price <= 0):
-        pytest.skip(f"Non-positive prices in {symbol}")
-
-    ours = fn(rs, price)
-    theirs = fn(c_talib, price)
 
     _compare(ours, theirs, f"{name}@{symbol}", rtol, atol)

@@ -5,18 +5,16 @@ use crate::error::{TaError, TaResult};
 pub fn roc(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_roc_params(input, timeperiod)?;
     let len = input.len();
-    let mut output = vec![0.0_f64; len];
-    output[..timeperiod].fill(f64::NAN);
-    for (out, (&cur, &prev)) in output[timeperiod..]
-        .iter_mut()
-        .zip(input[timeperiod..].iter().zip(input[..len - timeperiod].iter()))
-    {
-        *out = if prev != 0.0 {
-            ((cur - prev) / prev) * 100.0
-        } else {
-            0.0
-        };
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(std::iter::repeat(f64::NAN).take(timeperiod));
+    output.extend(
+        input[timeperiod..]
+            .iter()
+            .zip(input[..len - timeperiod].iter())
+            .map(|(&cur, &prev)| {
+                if prev != 0.0 { ((cur - prev) / prev) * 100.0 } else { 0.0 }
+            }),
+    );
     Ok(output)
 }
 
@@ -25,18 +23,16 @@ pub fn roc(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 pub fn rocp(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_roc_params(input, timeperiod)?;
     let len = input.len();
-    let mut output = vec![0.0_f64; len];
-    output[..timeperiod].fill(f64::NAN);
-    for (out, (&cur, &prev)) in output[timeperiod..]
-        .iter_mut()
-        .zip(input[timeperiod..].iter().zip(input[..len - timeperiod].iter()))
-    {
-        *out = if prev != 0.0 {
-            (cur - prev) / prev
-        } else {
-            0.0
-        };
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(std::iter::repeat(f64::NAN).take(timeperiod));
+    output.extend(
+        input[timeperiod..]
+            .iter()
+            .zip(input[..len - timeperiod].iter())
+            .map(|(&cur, &prev)| {
+                if prev != 0.0 { (cur - prev) / prev } else { 0.0 }
+            }),
+    );
     Ok(output)
 }
 
@@ -45,18 +41,16 @@ pub fn rocp(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 pub fn rocr(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_roc_params(input, timeperiod)?;
     let len = input.len();
-    let mut output = vec![0.0_f64; len];
-    output[..timeperiod].fill(f64::NAN);
-    for (out, (&cur, &prev)) in output[timeperiod..]
-        .iter_mut()
-        .zip(input[timeperiod..].iter().zip(input[..len - timeperiod].iter()))
-    {
-        *out = if prev != 0.0 {
-            cur / prev
-        } else {
-            0.0
-        };
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(std::iter::repeat(f64::NAN).take(timeperiod));
+    output.extend(
+        input[timeperiod..]
+            .iter()
+            .zip(input[..len - timeperiod].iter())
+            .map(|(&cur, &prev)| {
+                if prev != 0.0 { cur / prev } else { 0.0 }
+            }),
+    );
     Ok(output)
 }
 
@@ -65,18 +59,16 @@ pub fn rocr(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 pub fn rocr100(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_roc_params(input, timeperiod)?;
     let len = input.len();
-    let mut output = vec![0.0_f64; len];
-    output[..timeperiod].fill(f64::NAN);
-    for (out, (&cur, &prev)) in output[timeperiod..]
-        .iter_mut()
-        .zip(input[timeperiod..].iter().zip(input[..len - timeperiod].iter()))
-    {
-        *out = if prev != 0.0 {
-            (cur / prev) * 100.0
-        } else {
-            0.0
-        };
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(std::iter::repeat(f64::NAN).take(timeperiod));
+    output.extend(
+        input[timeperiod..]
+            .iter()
+            .zip(input[..len - timeperiod].iter())
+            .map(|(&cur, &prev)| {
+                if prev != 0.0 { (cur / prev) * 100.0 } else { 0.0 }
+            }),
+    );
     Ok(output)
 }
 

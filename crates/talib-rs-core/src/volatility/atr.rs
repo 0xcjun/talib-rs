@@ -14,19 +14,20 @@ pub fn trange(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> {
         return Err(TaError::InsufficientData { need: 2, got: len });
     }
 
-    let mut output = vec![0.0_f64; len];
-    output[0] = f64::NAN;
-    for (((&h, &l), &pc), out) in high[1..]
-        .iter()
-        .zip(low[1..].iter())
-        .zip(close[..len - 1].iter())
-        .zip(output[1..].iter_mut())
-    {
-        let hl = h - l;
-        let hc = (h - pc).abs();
-        let lc = (l - pc).abs();
-        *out = hl.max(hc).max(lc);
-    }
+    let mut output = Vec::with_capacity(len);
+    output.push(f64::NAN);
+    output.extend(
+        high[1..]
+            .iter()
+            .zip(low[1..].iter())
+            .zip(close[..len - 1].iter())
+            .map(|((&h, &l), &pc)| {
+                let hl = h - l;
+                let hc = (h - pc).abs();
+                let lc = (l - pc).abs();
+                hl.max(hc).max(lc)
+            }),
+    );
     Ok(output)
 }
 

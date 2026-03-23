@@ -20,15 +20,15 @@ pub fn mom(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         });
     }
 
-    let mut output = vec![0.0_f64; len]; // calloc — near-free
-    output[..timeperiod].fill(f64::NAN);
-    // iter_mut + zip: LLVM sees non-overlapping slices → auto-vectorizes
-    for (out, (&cur, &prev)) in output[timeperiod..]
-        .iter_mut()
-        .zip(input[timeperiod..].iter().zip(input[..len - timeperiod].iter()))
-    {
-        *out = cur - prev;
-    }
+    // capacity+extend: single alloc, no calloc zero-page overhead
+    let mut output = Vec::with_capacity(len);
+    output.extend(std::iter::repeat(f64::NAN).take(timeperiod));
+    output.extend(
+        input[timeperiod..]
+            .iter()
+            .zip(input[..len - timeperiod].iter())
+            .map(|(&cur, &prev)| cur - prev),
+    );
 
     Ok(output)
 }

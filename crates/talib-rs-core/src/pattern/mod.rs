@@ -176,42 +176,44 @@ fn validate_ohlc(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaRe
 
 // ========== Pattern Functions ==========
 
-/// CDL_DOJI
+/// CDL_DOJI — Two-phase: vectorized pre-compute + compact rolling comparison
+///
+/// Phase 1 pre-computes hl_range[] and body[] using iterator zip (auto-vectorized).
+/// Phase 2 rolling sum operates on 2 compact arrays instead of 4 interleaved input arrays,
+/// reducing cache pressure from 48 bytes/iter to 16 bytes/iter.
+/// Output uses branchless bit-trick to avoid conditional store stalls.
 pub fn cdl_doji(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<i32>> {
     let len = validate_ohlc(open, high, low, close)?;
     let mut output = vec![0i32; len];
-    let setting = BODY_DOJI;
-    let lookback = setting.avg_period;
+    let lookback = BODY_DOJI.avg_period; // 10
     if len <= lookback { return Ok(output); }
 
-    // Initialize running sum
-    let mut sum = 0.0;
-    for i in 0..lookback {
-        sum += cr(setting, open, high, low, close, i);
+    // Phase 1: pre-compute ranges — auto-vectorized by LLVM
+    let mut hl = vec![0.0_f64; len];
+    for ((&h, &l), out) in high.iter().zip(low.iter()).zip(hl.iter_mut()) {
+        *out = h - l;
+    }
+    let mut body = vec![0.0_f64; len];
+    for ((&c, &o), out) in close.iter().zip(open.iter()).zip(body.iter_mut()) {
+        *out = (c - o).abs();
     }
 
-    // BODY_DOJI uses HighLow range type, so inline the specific logic
-    // candle_average for HighLow with avg_period>0: factor * (sum / avg_period) / 1.0
-    let factor = setting.factor;
-    let avg_period_f = setting.avg_period as f64;
+    // Phase 2: rolling sum using iterators — zero bounds checks
+    let factor_div = BODY_DOJI.factor / lookback as f64; // 0.01
 
-    for i in lookback..len {
-        let o_i = open[i];
-        let h_i = high[i];
-        let l_i = low[i];
-        let c_i = close[i];
+    let mut sum: f64 = hl[..lookback].iter().sum();
 
-        // BODY_DOJI: threshold = factor * (sum / avg_period) for HighLow range
-        let threshold = factor * (sum / avg_period_f);
-        if (c_i - o_i).abs() <= threshold {
-            output[i] = 100;
+    // Iterator zip guarantees bounds elision: no runtime checks in hot loop
+    for (((hl_new, hl_old), bd), out) in hl[lookback..]
+        .iter()
+        .zip(hl[..len - lookback].iter())
+        .zip(body[lookback..].iter())
+        .zip(output[lookback..].iter_mut())
+    {
+        if *bd <= sum * factor_div {
+            *out = 100;
         }
-
-        // Update running sum: HighLow range = high - low
-        let add = h_i - l_i;
-        let sub_idx = i - lookback;
-        let sub = high[sub_idx] - low[sub_idx];
-        sum += add - sub;
+        sum += hl_new - hl_old;
     }
     Ok(output)
 }
@@ -235,13 +237,10 @@ pub fn cdl_hammer(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
     for i in (start - 1 - NEAR.avg_period)..(start - 1) { near_sum += cr_highlow(open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca_realbody(BODY_SHORT, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) < ca_realbody(BODY_SHORT, body_sum, open, high, low, close, i)
             && lower_shadow(open[i], low[i], close[i]) > ca_realbody(SHADOW_LONG, shadow_long_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca_highlow(SHADOW_VERY_SHORT, shadow_vs_sum, open, high, low, close, i)
-            && open[i].min(close[i]) <= low[i-1] + ca_highlow(NEAR, near_sum, open, high, low, close, i-1)
-        {
-            output[i] = 100;
-        }
+            && open[i].min(close[i]) <= low[i-1] + ca_highlow(NEAR, near_sum, open, high, low, close, i-1)) as i32 * 100;
         // Update sums — monomorphized: no match dispatch
         if BODY_SHORT.avg_period > 0 { body_sum += cr_realbody(open, high, low, close, i) - cr_realbody(open, high, low, close, i - BODY_SHORT.avg_period); }
         if SHADOW_VERY_SHORT.avg_period > 0 { shadow_vs_sum += cr_highlow(open, high, low, close, i) - cr_highlow(open, high, low, close, i - SHADOW_VERY_SHORT.avg_period); }
@@ -259,21 +258,16 @@ pub fn cdl_engulfing(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> 
 
     for i in 1..len {
         // Bullish: prev black, curr white, curr close >= prev open, curr open <= prev close
-        if candle_color(open[i-1], close[i-1]) == -1
+        let bull = candle_color(open[i-1], close[i-1]) == -1
             && candle_color(open[i], close[i]) == 1
             && close[i] >= open[i-1]
-            && open[i] <= close[i-1]
-        {
-            output[i] = 100;
-        }
+            && open[i] <= close[i-1];
         // Bearish: prev white, curr black, curr open >= prev close, curr close <= prev open
-        else if candle_color(open[i-1], close[i-1]) == 1
+        let bear = candle_color(open[i-1], close[i-1]) == 1
             && candle_color(open[i], close[i]) == -1
             && open[i] >= close[i-1]
-            && close[i] <= open[i-1]
-        {
-            output[i] = -100;
-        }
+            && close[i] <= open[i-1];
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
     }
     Ok(output)
 }
@@ -292,17 +286,14 @@ pub fn cdl_closingmarubozu(open: &[f64], high: &[f64], low: &[f64], close: &[f64
     for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i) {
-            if candle_color(open[i], close[i]) == 1
-                && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-            {
-                output[i] = 100;
-            } else if candle_color(open[i], close[i]) == -1
-                && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-            {
-                output[i] = -100;
-            }
-        }
+        let long_body = real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i);
+        let bull = long_body
+            && candle_color(open[i], close[i]) == 1
+            && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i);
+        let bear = long_body
+            && candle_color(open[i], close[i]) == -1
+            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i);
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         body_sum += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
         shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
     }
@@ -323,12 +314,9 @@ pub fn cdl_dragonflydoji(open: &[f64], high: &[f64], low: &[f64], close: &[f64])
     for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-            && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-        {
-            output[i] = 100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)) as i32 * 100;
         body_sum += cr(BODY_DOJI, open, high, low, close, i) - cr(BODY_DOJI, open, high, low, close, i - BODY_DOJI.avg_period);
         shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
     }
@@ -349,12 +337,9 @@ pub fn cdl_gravestonedoji(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
     for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
             && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-            && upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-        {
-            output[i] = 100;
-        }
+            && upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)) as i32 * 100;
         body_sum += cr(BODY_DOJI, open, high, low, close, i) - cr(BODY_DOJI, open, high, low, close, i - BODY_DOJI.avg_period);
         shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
     }
@@ -375,12 +360,9 @@ pub fn cdl_highwave(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> T
     // SHADOW_VERY_LONG avg_period=0, no init needed
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_VERY_LONG, shadow_sum, open, high, low, close, i)
-            && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_VERY_LONG, shadow_sum, open, high, low, close, i)
-        {
-            output[i] = candle_color(open[i], close[i]) * 100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_VERY_LONG, shadow_sum, open, high, low, close, i)) as i32 * candle_color(open[i], close[i]) * 100;
         if BODY_SHORT.avg_period > 0 { body_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period); }
     }
     Ok(output)
@@ -400,12 +382,9 @@ pub fn cdl_longleggeddoji(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
     // SHADOW_LONG avg_period=0, no init
 
     for i in start..len {
-        if real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
             && (lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_LONG, shadow_sum, open, high, low, close, i)
-                || upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_LONG, shadow_sum, open, high, low, close, i))
-        {
-            output[i] = 100;
-        }
+                || upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_LONG, shadow_sum, open, high, low, close, i))) as i32 * 100;
         body_sum += cr(BODY_DOJI, open, high, low, close, i) - cr(BODY_DOJI, open, high, low, close, i - BODY_DOJI.avg_period);
     }
     Ok(output)
@@ -425,12 +404,9 @@ pub fn cdl_longline(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> T
     for i in (start - SHADOW_SHORT.avg_period)..start { shadow_sum += cr(SHADOW_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_SHORT, shadow_sum, open, high, low, close, i)
-            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_SHORT, shadow_sum, open, high, low, close, i)
-        {
-            output[i] = candle_color(open[i], close[i]) * 100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_SHORT, shadow_sum, open, high, low, close, i)) as i32 * candle_color(open[i], close[i]) * 100;
         body_sum += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
         shadow_sum += cr(SHADOW_SHORT, open, high, low, close, i) - cr(SHADOW_SHORT, open, high, low, close, i - SHADOW_SHORT.avg_period);
     }
@@ -451,12 +427,9 @@ pub fn cdl_marubozu(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> T
     for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-        {
-            output[i] = candle_color(open[i], close[i]) * 100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)) as i32 * candle_color(open[i], close[i]) * 100;
         body_sum += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
         shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
     }
@@ -481,14 +454,11 @@ pub fn cdl_rickshawman(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
     for i in start..len {
         let mid = low[i] + (high[i] - low[i]) / 2.0;
         let near_avg = ca(NEAR, near_sum, open, high, low, close, i);
-        if real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
             && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_LONG, shadow_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_LONG, shadow_sum, open, high, low, close, i)
             && open[i].min(close[i]) <= mid + near_avg
-            && open[i].max(close[i]) >= mid - near_avg
-        {
-            output[i] = 100;
-        }
+            && open[i].max(close[i]) >= mid - near_avg) as i32 * 100;
         body_sum += cr(BODY_DOJI, open, high, low, close, i) - cr(BODY_DOJI, open, high, low, close, i - BODY_DOJI.avg_period);
         if NEAR.avg_period > 0 { near_sum += cr(NEAR, open, high, low, close, i) - cr(NEAR, open, high, low, close, i - NEAR.avg_period); }
     }
@@ -509,12 +479,9 @@ pub fn cdl_shortline(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> 
     for i in (start - SHADOW_SHORT.avg_period)..start { shadow_sum += cr(SHADOW_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_SHORT, shadow_sum, open, high, low, close, i)
-            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_SHORT, shadow_sum, open, high, low, close, i)
-        {
-            output[i] = candle_color(open[i], close[i]) * 100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_SHORT, shadow_sum, open, high, low, close, i)) as i32 * candle_color(open[i], close[i]) * 100;
         body_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
         shadow_sum += cr(SHADOW_SHORT, open, high, low, close, i) - cr(SHADOW_SHORT, open, high, low, close, i - SHADOW_SHORT.avg_period);
     }
@@ -533,12 +500,9 @@ pub fn cdl_spinningtop(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
     for i in (start - BODY_SHORT.avg_period)..start { body_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) > real_body(open[i], close[i])
-            && lower_shadow(open[i], low[i], close[i]) > real_body(open[i], close[i])
-        {
-            output[i] = candle_color(open[i], close[i]) * 100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) > real_body(open[i], close[i])) as i32 * candle_color(open[i], close[i]) * 100;
         body_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
     }
     Ok(output)
@@ -560,12 +524,9 @@ pub fn cdl_takuri(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
     // SHADOW_VERY_LONG avg_period=0
 
     for i in start..len {
-        if real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_vs_sum, open, high, low, close, i)
-            && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_VERY_LONG, shadow_vl_sum, open, high, low, close, i)
-        {
-            output[i] = 100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_VERY_LONG, shadow_vl_sum, open, high, low, close, i)) as i32 * 100;
         body_sum += cr(BODY_DOJI, open, high, low, close, i) - cr(BODY_DOJI, open, high, low, close, i - BODY_DOJI.avg_period);
         shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
     }
@@ -587,7 +548,7 @@ pub fn cdl_2crows(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
 
     for i in start..len {
         // 1st: long white
-        if candle_color(open[i-2], close[i-2]) == 1
+        output[i] = (candle_color(open[i-2], close[i-2]) == 1
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_sum, open, high, low, close, i-2)
             // 2nd: black, gap up
             && candle_color(open[i-1], close[i-1]) == -1
@@ -595,10 +556,7 @@ pub fn cdl_2crows(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
             // 3rd: black, opens within 2nd body, closes within 1st body
             && candle_color(open[i], close[i]) == -1
             && open[i] < open[i-1] && open[i] > close[i-1]
-            && close[i] > open[i-2] && close[i] < close[i-2]
-        {
-            output[i] = -100;
-        }
+            && close[i] > open[i-2] && close[i] < close[i-2]) as i32 * -100;
         body_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
     }
     Ok(output)
@@ -619,13 +577,10 @@ pub fn cdl_counterattack(open: &[f64], high: &[f64], low: &[f64], close: &[f64])
     for i in (start - BODY_LONG.avg_period)..start { body_sum[0] += cr(BODY_LONG, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) != candle_color(open[i], close[i])
+        output[i] = (candle_color(open[i-1], close[i-1]) != candle_color(open[i], close[i])
             && real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_sum[1], open, high, low, close, i-1)
             && real_body(open[i], close[i]) > ca(BODY_LONG, body_sum[0], open, high, low, close, i)
-            && (close[i] - close[i-1]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-1)
-        {
-            output[i] = candle_color(open[i], close[i]) * 100;
-        }
+            && (close[i] - close[i-1]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-1)) as i32 * candle_color(open[i], close[i]) * 100;
         equal_sum += cr(EQUAL, open, high, low, close, i-1) - cr(EQUAL, open, high, low, close, i - 1 - EQUAL.avg_period);
         body_sum[1] += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
         body_sum[0] += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
@@ -646,15 +601,12 @@ pub fn cdl_darkcloudcover(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
     for i in (start - 1 - BODY_LONG.avg_period)..(start - 1) { body_sum += cr(BODY_LONG, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) == 1
+        output[i] = (candle_color(open[i-1], close[i-1]) == 1
             && real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_sum, open, high, low, close, i-1)
             && candle_color(open[i], close[i]) == -1
             && open[i] > high[i-1]
             && close[i] > open[i-1]
-            && close[i] < close[i-1] - real_body(open[i-1], close[i-1]) * penetration
-        {
-            output[i] = -100;
-        }
+            && close[i] < close[i-1] - real_body(open[i-1], close[i-1]) * penetration) as i32 * -100;
         body_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
     }
     Ok(output)
@@ -674,15 +626,11 @@ pub fn cdl_dojistar(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> T
     for i in (start - BODY_DOJI.avg_period)..start { body_doji_sum += cr(BODY_DOJI, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-1)
-            && real_body(open[i], close[i]) <= ca(BODY_DOJI, body_doji_sum, open, high, low, close, i)
-        {
-            if candle_color(open[i-1], close[i-1]) == 1 && real_body_gap_up(open, close, i, i-1) {
-                output[i] = -100;
-            } else if candle_color(open[i-1], close[i-1]) == -1 && real_body_gap_down(open, close, i, i-1) {
-                output[i] = 100;
-            }
-        }
+        let base = real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-1)
+            && real_body(open[i], close[i]) <= ca(BODY_DOJI, body_doji_sum, open, high, low, close, i);
+        let bear = base && candle_color(open[i-1], close[i-1]) == 1 && real_body_gap_up(open, close, i, i-1);
+        let bull = base && candle_color(open[i-1], close[i-1]) == -1 && real_body_gap_down(open, close, i, i-1);
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
         body_doji_sum += cr(BODY_DOJI, open, high, low, close, i) - cr(BODY_DOJI, open, high, low, close, i - BODY_DOJI.avg_period);
     }
@@ -706,13 +654,10 @@ pub fn cdl_hangingman(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) ->
     for i in (start - 1 - NEAR.avg_period)..(start - 1) { near_sum += cr(NEAR, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
             && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_LONG, shadow_long_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_vs_sum, open, high, low, close, i)
-            && open[i].min(close[i]) >= high[i-1] - ca(NEAR, near_sum, open, high, low, close, i-1)
-        {
-            output[i] = -100;
-        }
+            && open[i].min(close[i]) >= high[i-1] - ca(NEAR, near_sum, open, high, low, close, i-1)) as i32 * -100;
         if BODY_SHORT.avg_period > 0 { body_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period); }
         if SHADOW_VERY_SHORT.avg_period > 0 { shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period); }
         if NEAR.avg_period > 0 { near_sum += cr(NEAR, open, high, low, close, i-1) - cr(NEAR, open, high, low, close, i - 1 - NEAR.avg_period); }
@@ -734,13 +679,10 @@ pub fn cdl_harami(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-1)
+        output[i] = (real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-1)
             && real_body(open[i], close[i]) <= ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
             && open[i].max(close[i]) < open[i-1].max(close[i-1])
-            && open[i].min(close[i]) > open[i-1].min(close[i-1])
-        {
-            output[i] = -candle_color(open[i-1], close[i-1]) * 100;
-        }
+            && open[i].min(close[i]) > open[i-1].min(close[i-1])) as i32 * -candle_color(open[i-1], close[i-1]) * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
     }
@@ -761,13 +703,10 @@ pub fn cdl_haramicross(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
     for i in (start - BODY_DOJI.avg_period)..start { body_doji_sum += cr(BODY_DOJI, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-1)
+        output[i] = (real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-1)
             && real_body(open[i], close[i]) <= ca(BODY_DOJI, body_doji_sum, open, high, low, close, i)
             && open[i].max(close[i]) < open[i-1].max(close[i-1])
-            && open[i].min(close[i]) > open[i-1].min(close[i-1])
-        {
-            output[i] = -candle_color(open[i-1], close[i-1]) * 100;
-        }
+            && open[i].min(close[i]) > open[i-1].min(close[i-1])) as i32 * -candle_color(open[i-1], close[i-1]) * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
         body_doji_sum += cr(BODY_DOJI, open, high, low, close, i) - cr(BODY_DOJI, open, high, low, close, i - BODY_DOJI.avg_period);
     }
@@ -921,15 +860,12 @@ pub fn cdl_homingpigeon(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) == -1
+        output[i] = (candle_color(open[i-1], close[i-1]) == -1
             && candle_color(open[i], close[i]) == -1
             && real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-1)
             && real_body(open[i], close[i]) <= ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
             && open[i] < open[i-1]
-            && close[i] > close[i-1]
-        {
-            output[i] = 100;
-        }
+            && close[i] > close[i-1]) as i32 * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
     }
@@ -951,17 +887,14 @@ pub fn cdl_inneck(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
 
     for i in start..len {
         // 1st: long black
-        if candle_color(open[i-1], close[i-1]) == -1
+        output[i] = (candle_color(open[i-1], close[i-1]) == -1
             && real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_sum, open, high, low, close, i-1)
             // 2nd: white, opens below prev low
             && candle_color(open[i], close[i]) == 1
             && open[i] < low[i-1]
             // close slightly into prev body: >= prev close and <= prev close + Equal avg
             && close[i] >= close[i-1]
-            && close[i] <= close[i-1] + ca(EQUAL, equal_sum, open, high, low, close, i-1)
-        {
-            output[i] = -100;
-        }
+            && close[i] <= close[i-1] + ca(EQUAL, equal_sum, open, high, low, close, i-1)) as i32 * -100;
         equal_sum += cr(EQUAL, open, high, low, close, i-1) - cr(EQUAL, open, high, low, close, i - 1 - EQUAL.avg_period);
         body_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
     }
@@ -983,13 +916,10 @@ pub fn cdl_invertedhammer(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
     for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_LONG, shadow_long_sum, open, high, low, close, i)
             && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_vs_sum, open, high, low, close, i)
-            && real_body_gap_down(open, close, i, i-1)
-        {
-            output[i] = 100;
-        }
+            && real_body_gap_down(open, close, i, i-1)) as i32 * 100;
         if BODY_SHORT.avg_period > 0 { body_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period); }
         if SHADOW_VERY_SHORT.avg_period > 0 { shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period); }
     }
@@ -1023,11 +953,9 @@ pub fn cdl_kicking(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> Ta
             && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum[0], open, high, low, close, i)
         {
             // Gap: black then white = bullish, white then black = bearish
-            if color_prev == -1 && color_curr == 1 && open[i] > open[i-1] {
-                output[i] = 100;
-            } else if color_prev == 1 && color_curr == -1 && open[i] < open[i-1] {
-                output[i] = -100;
-            }
+            let bull = color_prev == -1 && color_curr == 1 && open[i] > open[i-1];
+            let bear = color_prev == 1 && color_curr == -1 && open[i] < open[i-1];
+            output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         }
         shadow_sum[1] += cr(SHADOW_VERY_SHORT, open, high, low, close, i-1) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - 1 - SHADOW_VERY_SHORT.avg_period);
         shadow_sum[0] += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
@@ -1066,14 +994,10 @@ pub fn cdl_kickingbylength(open: &[f64], high: &[f64], low: &[f64], close: &[f64
             // Gap check
             let has_gap = (color_prev == -1 && color_curr == 1 && open[i] > open[i-1])
                 || (color_prev == 1 && color_curr == -1 && open[i] < open[i-1]);
-            if has_gap {
-                // Signal direction based on longer marubozu
-                if real_body(open[i], close[i]) >= real_body(open[i-1], close[i-1]) {
-                    output[i] = color_curr * 100;
-                } else {
-                    output[i] = color_prev * 100;
-                }
-            }
+            let curr_longer = real_body(open[i], close[i]) >= real_body(open[i-1], close[i-1]);
+            // Branchless: select color based on which marubozu is longer
+            let color = if curr_longer { color_curr } else { color_prev };
+            output[i] = has_gap as i32 * color * 100;
         }
         shadow_sum[1] += cr(SHADOW_VERY_SHORT, open, high, low, close, i-1) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - 1 - SHADOW_VERY_SHORT.avg_period);
         shadow_sum[0] += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
@@ -1095,12 +1019,9 @@ pub fn cdl_matchinglow(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
     for i in (start - 1 - EQUAL.avg_period)..(start - 1) { equal_sum += cr(EQUAL, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) == -1
+        output[i] = (candle_color(open[i-1], close[i-1]) == -1
             && candle_color(open[i], close[i]) == -1
-            && (close[i] - close[i-1]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-1)
-        {
-            output[i] = 100;
-        }
+            && (close[i] - close[i-1]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-1)) as i32 * 100;
         equal_sum += cr(EQUAL, open, high, low, close, i-1) - cr(EQUAL, open, high, low, close, i - 1 - EQUAL.avg_period);
     }
     Ok(output)
@@ -1120,14 +1041,11 @@ pub fn cdl_onneck(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
     for i in (start - 1 - BODY_LONG.avg_period)..(start - 1) { body_sum += cr(BODY_LONG, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) == -1
+        output[i] = (candle_color(open[i-1], close[i-1]) == -1
             && real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_sum, open, high, low, close, i-1)
             && candle_color(open[i], close[i]) == 1
             && open[i] < low[i-1]
-            && (close[i] - low[i-1]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-1)
-        {
-            output[i] = -100;
-        }
+            && (close[i] - low[i-1]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-1)) as i32 * -100;
         equal_sum += cr(EQUAL, open, high, low, close, i-1) - cr(EQUAL, open, high, low, close, i - 1 - EQUAL.avg_period);
         body_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
     }
@@ -1147,16 +1065,13 @@ pub fn cdl_piercing(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> T
     for i in (start - BODY_LONG.avg_period)..start { body_sum[0] += cr(BODY_LONG, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) == -1
+        output[i] = (candle_color(open[i-1], close[i-1]) == -1
             && real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_sum[1], open, high, low, close, i-1)
             && candle_color(open[i], close[i]) == 1
             && real_body(open[i], close[i]) > ca(BODY_LONG, body_sum[0], open, high, low, close, i)
             && open[i] < low[i-1]
             && close[i] < open[i-1]
-            && close[i] > close[i-1] + real_body(open[i-1], close[i-1]) * 0.5
-        {
-            output[i] = 100;
-        }
+            && close[i] > close[i-1] + real_body(open[i-1], close[i-1]) * 0.5) as i32 * 100;
         body_sum[1] += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
         body_sum[0] += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
     }
@@ -1181,17 +1096,13 @@ pub fn cdl_separatinglines(open: &[f64], high: &[f64], low: &[f64], close: &[f64
     for i in start..len {
         let color_prev = candle_color(open[i-1], close[i-1]);
         let color_curr = candle_color(open[i], close[i]);
-        if color_prev != color_curr
+        let base = color_prev != color_curr
             && (open[i] - open[i-1]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-1)
-            && real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i)
-        {
-            // Bullish: very short lower shadow, bearish: very short upper shadow
-            if color_curr == 1 && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i) {
-                output[i] = 100;
-            } else if color_curr == -1 && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i) {
-                output[i] = -100;
-            }
-        }
+            && real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i);
+        // Bullish: very short lower shadow, bearish: very short upper shadow
+        let bull = base && color_curr == 1 && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i);
+        let bear = base && color_curr == -1 && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i);
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
         body_sum += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
         equal_sum += cr(EQUAL, open, high, low, close, i-1) - cr(EQUAL, open, high, low, close, i - 1 - EQUAL.avg_period);
@@ -1214,13 +1125,10 @@ pub fn cdl_shootingstar(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
     for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
+        output[i] = (real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_LONG, shadow_long_sum, open, high, low, close, i)
             && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_vs_sum, open, high, low, close, i)
-            && real_body_gap_up(open, close, i, i-1)
-        {
-            output[i] = -100;
-        }
+            && real_body_gap_up(open, close, i, i-1)) as i32 * -100;
         if BODY_SHORT.avg_period > 0 { body_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period); }
         if SHADOW_VERY_SHORT.avg_period > 0 { shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period); }
     }
@@ -1239,14 +1147,11 @@ pub fn cdl_sticksandwich(open: &[f64], high: &[f64], low: &[f64], close: &[f64])
     for i in (start - 2 - EQUAL.avg_period)..(start - 2) { equal_sum += cr(EQUAL, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == -1
+        output[i] = (candle_color(open[i-2], close[i-2]) == -1
             && candle_color(open[i-1], close[i-1]) == 1
             && candle_color(open[i], close[i]) == -1
             && low[i-1] > close[i-2]
-            && (close[i] - close[i-2]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-2)
-        {
-            output[i] = 100;
-        }
+            && (close[i] - close[i-2]).abs() <= ca(EQUAL, equal_sum, open, high, low, close, i-2)) as i32 * 100;
         equal_sum += cr(EQUAL, open, high, low, close, i-2) - cr(EQUAL, open, high, low, close, i - 2 - EQUAL.avg_period);
     }
     Ok(output)
@@ -1266,15 +1171,12 @@ pub fn cdl_thrusting(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> 
     for i in (start - 1 - BODY_LONG.avg_period)..(start - 1) { body_sum += cr(BODY_LONG, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) == -1
+        output[i] = (candle_color(open[i-1], close[i-1]) == -1
             && real_body(open[i-1], close[i-1]) > ca(BODY_LONG, body_sum, open, high, low, close, i-1)
             && candle_color(open[i], close[i]) == 1
             && open[i] < low[i-1]
             && close[i] > close[i-1] + ca(EQUAL, equal_sum, open, high, low, close, i-1)
-            && close[i] <= close[i-1] + real_body(open[i-1], close[i-1]) * 0.5
-        {
-            output[i] = -100;
-        }
+            && close[i] <= close[i-1] + real_body(open[i-1], close[i-1]) * 0.5) as i32 * -100;
         equal_sum += cr(EQUAL, open, high, low, close, i-1) - cr(EQUAL, open, high, low, close, i - 1 - EQUAL.avg_period);
         body_sum += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
     }
@@ -1295,17 +1197,14 @@ pub fn cdl_belthold(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> T
     for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i) {
-            if candle_color(open[i], close[i]) == 1
-                && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-            {
-                output[i] = 100;
-            } else if candle_color(open[i], close[i]) == -1
-                && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i)
-            {
-                output[i] = -100;
-            }
-        }
+        let long_body = real_body(open[i], close[i]) > ca(BODY_LONG, body_sum, open, high, low, close, i);
+        let bull = long_body
+            && candle_color(open[i], close[i]) == 1
+            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i);
+        let bear = long_body
+            && candle_color(open[i], close[i]) == -1
+            && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum, open, high, low, close, i);
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         body_sum += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
         shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
     }
@@ -1333,7 +1232,7 @@ pub fn cdl_3blackcrows(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
     }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == -1
+        output[i] = (candle_color(open[i-2], close[i-2]) == -1
             && candle_color(open[i-1], close[i-1]) == -1
             && candle_color(open[i], close[i]) == -1
             && close[i-1] < close[i-2] && close[i] < close[i-1]
@@ -1342,10 +1241,7 @@ pub fn cdl_3blackcrows(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
             && open[i] <= open[i-1] && open[i] >= close[i-1]
             && lower_shadow(open[i-2], low[i-2], close[i-2]) < ca(SHADOW_VERY_SHORT, shadow_sum[0], open, high, low, close, i-2)
             && lower_shadow(open[i-1], low[i-1], close[i-1]) < ca(SHADOW_VERY_SHORT, shadow_sum[1], open, high, low, close, i-1)
-            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum[2], open, high, low, close, i)
-        {
-            output[i] = -100;
-        }
+            && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum[2], open, high, low, close, i)) as i32 * -100;
         for k in 0..3 {
             let bar = i - 2 + k;
             if bar >= SHADOW_VERY_SHORT.avg_period {
@@ -1371,15 +1267,12 @@ pub fn cdl_3inside(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> Ta
     for i in (start - 1 - BODY_SHORT.avg_period)..(start - 1) { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
+        output[i] = (real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) <= ca(BODY_SHORT, body_short_sum, open, high, low, close, i-1)
             && open[i-1].max(close[i-1]) < open[i-2].max(close[i-2])
             && open[i-1].min(close[i-1]) > open[i-2].min(close[i-2])
             && ((candle_color(open[i-2], close[i-2]) == 1 && candle_color(open[i], close[i]) == -1 && close[i] < open[i-2])
-                || (candle_color(open[i-2], close[i-2]) == -1 && candle_color(open[i], close[i]) == 1 && close[i] > open[i-2]))
-        {
-            output[i] = -candle_color(open[i-2], close[i-2]) * 100;
-        }
+                || (candle_color(open[i-2], close[i-2]) == -1 && candle_color(open[i], close[i]) == 1 && close[i] > open[i-2]))) as i32 * -candle_color(open[i-2], close[i-2]) * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i-1) - cr(BODY_SHORT, open, high, low, close, i - 1 - BODY_SHORT.avg_period);
     }
@@ -1434,9 +1327,7 @@ pub fn cdl_3linestrike(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
             } else {
                 open[i] <= close[i-1] && close[i] >= open[i-3]
             };
-            if progressive && opens_near && strike {
-                output[i] = c3 * 100;
-            }
+            output[i] = (progressive && opens_near && strike) as i32 * c3 * 100;
         }
         // Update near sums
         for k in [2usize, 3] {
@@ -1458,23 +1349,18 @@ pub fn cdl_3outside(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> T
 
     for i in 2..len {
         // Bullish: 1st black, 2nd white engulfs, 3rd closes higher
-        if candle_color(open[i-2], close[i-2]) == -1
+        let bull = candle_color(open[i-2], close[i-2]) == -1
             && candle_color(open[i-1], close[i-1]) == 1
             && close[i-1] >= open[i-2]
             && open[i-1] <= close[i-2]
-            && close[i] > close[i-1]
-        {
-            output[i] = 100;
-        }
+            && close[i] > close[i-1];
         // Bearish: 1st white, 2nd black engulfs, 3rd closes lower
-        else if candle_color(open[i-2], close[i-2]) == 1
+        let bear = candle_color(open[i-2], close[i-2]) == 1
             && candle_color(open[i-1], close[i-1]) == -1
             && open[i-1] >= close[i-2]
             && close[i-1] <= open[i-2]
-            && close[i] < close[i-1]
-        {
-            output[i] = -100;
-        }
+            && close[i] < close[i-1];
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
     }
     Ok(output)
 }
@@ -1498,7 +1384,7 @@ pub fn cdl_3starsinsouth(open: &[f64], high: &[f64], low: &[f64], close: &[f64])
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == -1
+        output[i] = (candle_color(open[i-2], close[i-2]) == -1
             && candle_color(open[i-1], close[i-1]) == -1
             && candle_color(open[i], close[i]) == -1
             // 1st: long body, long lower shadow
@@ -1512,10 +1398,7 @@ pub fn cdl_3starsinsouth(open: &[f64], high: &[f64], low: &[f64], close: &[f64])
             && real_body(open[i], close[i]) < ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
             && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_vs_sum[1], open, high, low, close, i)
             && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_vs_sum[1], open, high, low, close, i)
-            && low[i] > low[i-1] && high[i] < high[i-1]
-        {
-            output[i] = 100;
-        }
+            && low[i] > low[i-1] && high[i] < high[i-1]) as i32 * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         shadow_vs_sum[0] += cr(SHADOW_VERY_SHORT, open, high, low, close, i-1) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - 1 - SHADOW_VERY_SHORT.avg_period);
         shadow_vs_sum[1] += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period);
@@ -1552,7 +1435,7 @@ pub fn cdl_3whitesoldiers(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == 1
+        output[i] = (candle_color(open[i-2], close[i-2]) == 1
             && candle_color(open[i-1], close[i-1]) == 1
             && candle_color(open[i], close[i]) == 1
             && close[i-1] > close[i-2] && close[i] > close[i-1]
@@ -1567,10 +1450,7 @@ pub fn cdl_3whitesoldiers(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
             && real_body(open[i-1], close[i-1]) > real_body(open[i-2], close[i-2]) - ca(FAR, far_sum[1], open, high, low, close, i-1)
             && real_body(open[i], close[i]) > real_body(open[i-1], close[i-1]) - ca(FAR, far_sum[2], open, high, low, close, i)
             // Last body not short
-            && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
-        {
-            output[i] = 100;
-        }
+            && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum, open, high, low, close, i)) as i32 * 100;
         for k in 0..3 {
             let bar = i - 2 + k;
             if SHADOW_VERY_SHORT.avg_period > 0 && bar >= SHADOW_VERY_SHORT.avg_period {
@@ -1605,29 +1485,24 @@ pub fn cdl_abandonedbaby(open: &[f64], high: &[f64], low: &[f64], close: &[f64])
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
+        let base = real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) <= ca(BODY_DOJI, body_doji_sum, open, high, low, close, i-1)
-            && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
-        {
-            // Bullish: 1st black, gap down doji, gap up white
-            if candle_color(open[i-2], close[i-2]) == -1
-                && candle_color(open[i], close[i]) == 1
-                && high[i-1] < low[i-2]
-                && low[i] > high[i-1]
-                && close[i] > close[i-2] + real_body(open[i-2], close[i-2]) * penetration
-            {
-                output[i] = 100;
-            }
-            // Bearish: 1st white, gap up doji, gap down black
-            else if candle_color(open[i-2], close[i-2]) == 1
-                && candle_color(open[i], close[i]) == -1
-                && low[i-1] > high[i-2]
-                && high[i] < low[i-1]
-                && close[i] < close[i-2] - real_body(open[i-2], close[i-2]) * penetration
-            {
-                output[i] = -100;
-            }
-        }
+            && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum, open, high, low, close, i);
+        // Bullish: 1st black, gap down doji, gap up white
+        let bull = base
+            && candle_color(open[i-2], close[i-2]) == -1
+            && candle_color(open[i], close[i]) == 1
+            && high[i-1] < low[i-2]
+            && low[i] > high[i-1]
+            && close[i] > close[i-2] + real_body(open[i-2], close[i-2]) * penetration;
+        // Bearish: 1st white, gap up doji, gap down black
+        let bear = base
+            && candle_color(open[i-2], close[i-2]) == 1
+            && candle_color(open[i], close[i]) == -1
+            && low[i-1] > high[i-2]
+            && high[i] < low[i-1]
+            && close[i] < close[i-2] - real_body(open[i-2], close[i-2]) * penetration;
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_doji_sum += cr(BODY_DOJI, open, high, low, close, i-1) - cr(BODY_DOJI, open, high, low, close, i - 1 - BODY_DOJI.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
@@ -1666,7 +1541,7 @@ pub fn cdl_advanceblock(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
     for i in (start - 2 - BODY_LONG.avg_period)..(start - 2) { body_long_sum += cr(BODY_LONG, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == 1
+        let base = candle_color(open[i-2], close[i-2]) == 1
             && candle_color(open[i-1], close[i-1]) == 1
             && candle_color(open[i], close[i]) == 1
             && close[i-1] > close[i-2] && close[i] > close[i-1]
@@ -1675,22 +1550,17 @@ pub fn cdl_advanceblock(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
             && open[i] > open[i-1] && open[i] <= close[i-1] + ca(NEAR, near_sum[2], open, high, low, close, i)
             // 1st: long body, short upper shadow
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
-            && upper_shadow(open[i-2], high[i-2], close[i-2]) < ca(SHADOW_SHORT, shadow_short_sum[0], open, high, low, close, i-2)
-        {
-            // Weakness: bodies getting smaller and/or shadows getting longer
-            let weakness =
-                (real_body(open[i-1], close[i-1]) < real_body(open[i-2], close[i-2]) - ca(FAR, far_sum[1], open, high, low, close, i-1)
-                    && real_body(open[i], close[i]) < real_body(open[i-1], close[i-1]) + ca(NEAR, near_sum[2], open, high, low, close, i))
-                || (real_body(open[i], close[i]) < real_body(open[i-1], close[i-1])
-                    && real_body(open[i-1], close[i-1]) < real_body(open[i-2], close[i-2])
-                    && (upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_LONG, shadow_long_sum[2], open, high, low, close, i)
-                        || upper_shadow(open[i-1], high[i-1], close[i-1]) > ca(SHADOW_LONG, shadow_long_sum[1], open, high, low, close, i-1)))
-                || (real_body(open[i], close[i]) < real_body(open[i-1], close[i-1]) - ca(FAR, far_sum[2], open, high, low, close, i));
-
-            if weakness {
-                output[i] = -100;
-            }
-        }
+            && upper_shadow(open[i-2], high[i-2], close[i-2]) < ca(SHADOW_SHORT, shadow_short_sum[0], open, high, low, close, i-2);
+        // Weakness: bodies getting smaller and/or shadows getting longer
+        let weakness = base && (
+            (real_body(open[i-1], close[i-1]) < real_body(open[i-2], close[i-2]) - ca(FAR, far_sum[1], open, high, low, close, i-1)
+                && real_body(open[i], close[i]) < real_body(open[i-1], close[i-1]) + ca(NEAR, near_sum[2], open, high, low, close, i))
+            || (real_body(open[i], close[i]) < real_body(open[i-1], close[i-1])
+                && real_body(open[i-1], close[i-1]) < real_body(open[i-2], close[i-2])
+                && (upper_shadow(open[i], high[i], close[i]) > ca(SHADOW_LONG, shadow_long_sum[2], open, high, low, close, i)
+                    || upper_shadow(open[i-1], high[i-1], close[i-1]) > ca(SHADOW_LONG, shadow_long_sum[1], open, high, low, close, i-1)))
+            || (real_body(open[i], close[i]) < real_body(open[i-1], close[i-1]) - ca(FAR, far_sum[2], open, high, low, close, i)));
+        output[i] = weakness as i32 * -100;
         // Update sums
         for k in 0..3 {
             let bar = i - 2 + k;
@@ -1721,30 +1591,25 @@ pub fn cdl_breakaway(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> 
     for i in (start - 4 - BODY_LONG.avg_period)..(start - 4) { body_sum += cr(BODY_LONG, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i-4], close[i-4]) > ca(BODY_LONG, body_sum, open, high, low, close, i-4)
+        let base = real_body(open[i-4], close[i-4]) > ca(BODY_LONG, body_sum, open, high, low, close, i-4)
             && candle_color(open[i-4], close[i-4]) == candle_color(open[i-3], close[i-3])
             && candle_color(open[i-3], close[i-3]) == candle_color(open[i-1], close[i-1])
-            && candle_color(open[i-1], close[i-1]) == -candle_color(open[i], close[i])
-        {
-            // Bearish first (black): gap down, progressive lower H/L, 5th closes in gap
-            if candle_color(open[i-4], close[i-4]) == -1
-                && real_body_gap_down(open, close, i-3, i-4)
-                && high[i-2] < high[i-3] && low[i-2] < low[i-3]
-                && high[i-1] < high[i-2] && low[i-1] < low[i-2]
-                && close[i] > open[i-3] && close[i] < close[i-4]
-            {
-                output[i] = candle_color(open[i], close[i]) * 100;
-            }
-            // Bullish first (white): gap up, progressive higher H/L, 5th closes in gap
-            else if candle_color(open[i-4], close[i-4]) == 1
-                && real_body_gap_up(open, close, i-3, i-4)
-                && high[i-2] > high[i-3] && low[i-2] > low[i-3]
-                && high[i-1] > high[i-2] && low[i-1] > low[i-2]
-                && close[i] < open[i-3] && close[i] > close[i-4]
-            {
-                output[i] = candle_color(open[i], close[i]) * 100;
-            }
-        }
+            && candle_color(open[i-1], close[i-1]) == -candle_color(open[i], close[i]);
+        // Bearish first (black): gap down, progressive lower H/L, 5th closes in gap
+        let bear_first = base
+            && candle_color(open[i-4], close[i-4]) == -1
+            && real_body_gap_down(open, close, i-3, i-4)
+            && high[i-2] < high[i-3] && low[i-2] < low[i-3]
+            && high[i-1] < high[i-2] && low[i-1] < low[i-2]
+            && close[i] > open[i-3] && close[i] < close[i-4];
+        // Bullish first (white): gap up, progressive higher H/L, 5th closes in gap
+        let bull_first = base
+            && candle_color(open[i-4], close[i-4]) == 1
+            && real_body_gap_up(open, close, i-3, i-4)
+            && high[i-2] > high[i-3] && low[i-2] > low[i-3]
+            && high[i-1] > high[i-2] && low[i-1] > low[i-2]
+            && close[i] < open[i-3] && close[i] > close[i-4];
+        output[i] = (bear_first as i32 | bull_first as i32) * candle_color(open[i], close[i]) * 100;
         body_sum += cr(BODY_LONG, open, high, low, close, i-4) - cr(BODY_LONG, open, high, low, close, i - 4 - BODY_LONG.avg_period);
     }
     Ok(output)
@@ -1769,7 +1634,7 @@ pub fn cdl_concealbabyswall(open: &[f64], high: &[f64], low: &[f64], close: &[f6
     }
 
     for i in start..len {
-        if candle_color(open[i-3], close[i-3]) == -1
+        output[i] = (candle_color(open[i-3], close[i-3]) == -1
             && candle_color(open[i-2], close[i-2]) == -1
             && candle_color(open[i-1], close[i-1]) == -1
             && candle_color(open[i], close[i]) == -1
@@ -1782,10 +1647,7 @@ pub fn cdl_concealbabyswall(open: &[f64], high: &[f64], low: &[f64], close: &[f6
             && real_body_gap_down(open, close, i-1, i-2)
             && high[i-1] > close[i-2]
             // 4th: engulfs 3rd including shadows
-            && open[i] >= high[i-1] && close[i] <= low[i-1]
-        {
-            output[i] = 100;
-        }
+            && open[i] >= high[i-1] && close[i] <= low[i-1]) as i32 * 100;
         for k in 0..4 {
             let bar = i - 3 + k;
             if SHADOW_VERY_SHORT.avg_period > 0 && bar >= SHADOW_VERY_SHORT.avg_period {
@@ -1814,16 +1676,13 @@ pub fn cdl_eveningdojistar(open: &[f64], high: &[f64], low: &[f64], close: &[f64
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == 1
+        output[i] = (candle_color(open[i-2], close[i-2]) == 1
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) <= ca(BODY_DOJI, body_doji_sum, open, high, low, close, i-1)
             && real_body_gap_up(open, close, i-1, i-2)
             && candle_color(open[i], close[i]) == -1
             && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
-            && close[i] < close[i-2] - real_body(open[i-2], close[i-2]) * penetration
-        {
-            output[i] = -100;
-        }
+            && close[i] < close[i-2] - real_body(open[i-2], close[i-2]) * penetration) as i32 * -100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_doji_sum += cr(BODY_DOJI, open, high, low, close, i-1) - cr(BODY_DOJI, open, high, low, close, i - 1 - BODY_DOJI.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
@@ -1848,16 +1707,13 @@ pub fn cdl_eveningstar(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum2 += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == 1
+        output[i] = (candle_color(open[i-2], close[i-2]) == 1
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) <= ca(BODY_SHORT, body_short_sum, open, high, low, close, i-1)
             && real_body_gap_up(open, close, i-1, i-2)
             && candle_color(open[i], close[i]) == -1
             && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum2, open, high, low, close, i)
-            && close[i] < close[i-2] - real_body(open[i-2], close[i-2]) * penetration
-        {
-            output[i] = -100;
-        }
+            && close[i] < close[i-2] - real_body(open[i-2], close[i-2]) * penetration) as i32 * -100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i-1) - cr(BODY_SHORT, open, high, low, close, i - 1 - BODY_SHORT.avg_period);
         body_short_sum2 += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
@@ -1879,20 +1735,15 @@ pub fn cdl_gapsidesidewhite(open: &[f64], high: &[f64], low: &[f64], close: &[f6
     for i in (start - 1 - EQUAL.avg_period)..(start - 1) { equal_sum += cr(EQUAL, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-1], close[i-1]) == 1
+        let base = candle_color(open[i-1], close[i-1]) == 1
             && candle_color(open[i], close[i]) == 1
             && (real_body(open[i-1], close[i-1]) - real_body(open[i], close[i])).abs() < ca(NEAR, near_sum, open, high, low, close, i-1)
-            && (open[i-1] - open[i]).abs() < ca(EQUAL, equal_sum, open, high, low, close, i-1)
-        {
-            // Upside gap
-            if real_body_gap_up(open, close, i-1, i-2) {
-                output[i] = 100;
-            }
-            // Downside gap
-            else if real_body_gap_down(open, close, i-1, i-2) {
-                output[i] = -100;
-            }
-        }
+            && (open[i-1] - open[i]).abs() < ca(EQUAL, equal_sum, open, high, low, close, i-1);
+        // Upside gap
+        let bull = base && real_body_gap_up(open, close, i-1, i-2);
+        // Downside gap
+        let bear = base && real_body_gap_down(open, close, i-1, i-2);
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         near_sum += cr(NEAR, open, high, low, close, i-1) - cr(NEAR, open, high, low, close, i - 1 - NEAR.avg_period);
         equal_sum += cr(EQUAL, open, high, low, close, i-1) - cr(EQUAL, open, high, low, close, i - 1 - EQUAL.avg_period);
     }
@@ -1920,7 +1771,7 @@ pub fn cdl_identical3crows(open: &[f64], high: &[f64], low: &[f64], close: &[f64
     }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == -1
+        output[i] = (candle_color(open[i-2], close[i-2]) == -1
             && candle_color(open[i-1], close[i-1]) == -1
             && candle_color(open[i], close[i]) == -1
             && close[i-1] < close[i-2] && close[i] < close[i-1]
@@ -1930,10 +1781,7 @@ pub fn cdl_identical3crows(open: &[f64], high: &[f64], low: &[f64], close: &[f64
             && lower_shadow(open[i], low[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_sum[2], open, high, low, close, i)
             // Each opens equal to prior close
             && (open[i-1] - close[i-2]).abs() <= ca(EQUAL, equal_sum[0], open, high, low, close, i-2)
-            && (open[i] - close[i-1]).abs() <= ca(EQUAL, equal_sum[1], open, high, low, close, i-1)
-        {
-            output[i] = -100;
-        }
+            && (open[i] - close[i-1]).abs() <= ca(EQUAL, equal_sum[1], open, high, low, close, i-1)) as i32 * -100;
         for k in 0..3 {
             let bar = i - 2 + k;
             if SHADOW_VERY_SHORT.avg_period > 0 && bar >= SHADOW_VERY_SHORT.avg_period {
@@ -1962,7 +1810,7 @@ pub fn cdl_ladderbottom(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
     for i in (start - 1 - SHADOW_VERY_SHORT.avg_period)..(start - 1) { shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-4], close[i-4]) == -1
+        output[i] = (candle_color(open[i-4], close[i-4]) == -1
             && candle_color(open[i-3], close[i-3]) == -1
             && candle_color(open[i-2], close[i-2]) == -1
             && candle_color(open[i-1], close[i-1]) == -1
@@ -1972,10 +1820,7 @@ pub fn cdl_ladderbottom(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
             // 5th: white, opens above 4th open, closes above 4th high
             && candle_color(open[i], close[i]) == 1
             && open[i] > open[i-1]
-            && close[i] > high[i-1]
-        {
-            output[i] = 100;
-        }
+            && close[i] > high[i-1]) as i32 * 100;
         shadow_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i-1) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - 1 - SHADOW_VERY_SHORT.avg_period);
     }
     Ok(output)
@@ -1999,7 +1844,7 @@ pub fn cdl_mathold(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> Ta
     }
 
     for i in start..len {
-        if real_body(open[i-4], close[i-4]) > ca(BODY_LONG, body_sum[4], open, high, low, close, i-4)
+        output[i] = (real_body(open[i-4], close[i-4]) > ca(BODY_LONG, body_sum[4], open, high, low, close, i-4)
             && real_body(open[i-3], close[i-3]) < ca(BODY_SHORT, body_sum[3], open, high, low, close, i-3)
             && real_body(open[i-2], close[i-2]) < ca(BODY_SHORT, body_sum[2], open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) < ca(BODY_SHORT, body_sum[1], open, high, low, close, i-1)
@@ -2020,10 +1865,7 @@ pub fn cdl_mathold(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> Ta
             && open[i-1].max(close[i-1]) < open[i-2].max(close[i-2])
             // 5th opens above prior close, closes above highest reaction high
             && open[i] > close[i-1]
-            && close[i] > high[i-3].max(high[i-2]).max(high[i-1])
-        {
-            output[i] = 100;
-        }
+            && close[i] > high[i-3].max(high[i-2]).max(high[i-1])) as i32 * 100;
         body_sum[4] += cr(BODY_LONG, open, high, low, close, i-4) - cr(BODY_LONG, open, high, low, close, i - 4 - BODY_LONG.avg_period);
         for k in 1..4 {
             let bar = i - 4 + k;
@@ -2050,16 +1892,13 @@ pub fn cdl_morningdojistar(open: &[f64], high: &[f64], low: &[f64], close: &[f64
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == -1
+        output[i] = (candle_color(open[i-2], close[i-2]) == -1
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) <= ca(BODY_DOJI, body_doji_sum, open, high, low, close, i-1)
             && real_body_gap_down(open, close, i-1, i-2)
             && candle_color(open[i], close[i]) == 1
             && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
-            && close[i] > close[i-2] + real_body(open[i-2], close[i-2]) * penetration
-        {
-            output[i] = 100;
-        }
+            && close[i] > close[i-2] + real_body(open[i-2], close[i-2]) * penetration) as i32 * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_doji_sum += cr(BODY_DOJI, open, high, low, close, i-1) - cr(BODY_DOJI, open, high, low, close, i - 1 - BODY_DOJI.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
@@ -2084,16 +1923,13 @@ pub fn cdl_morningstar(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum2 += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == -1
+        output[i] = (candle_color(open[i-2], close[i-2]) == -1
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) <= ca(BODY_SHORT, body_short_sum, open, high, low, close, i-1)
             && real_body_gap_down(open, close, i-1, i-2)
             && candle_color(open[i], close[i]) == 1
             && real_body(open[i], close[i]) > ca(BODY_SHORT, body_short_sum2, open, high, low, close, i)
-            && close[i] > close[i-2] + real_body(open[i-2], close[i-2]) * penetration
-        {
-            output[i] = 100;
-        }
+            && close[i] > close[i-2] + real_body(open[i-2], close[i-2]) * penetration) as i32 * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i-1) - cr(BODY_SHORT, open, high, low, close, i - 1 - BODY_SHORT.avg_period);
         body_short_sum2 += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
@@ -2129,7 +1965,7 @@ pub fn cdl_risefall3methods(open: &[f64], high: &[f64], low: &[f64], close: &[f6
                 && real_body(open[i-2], close[i-2]) < ca(BODY_SHORT, body_short_sum[1], open, high, low, close, i-2)
                 && real_body(open[i-1], close[i-1]) < ca(BODY_SHORT, body_short_sum[2], open, high, low, close, i-1);
 
-            if c4 == 1 && mid_short
+            let bull = c4 == 1 && mid_short
                 && candle_color(open[i-3], close[i-3]) == -1
                 && candle_color(open[i-2], close[i-2]) == -1
                 && candle_color(open[i-1], close[i-1]) == -1
@@ -2140,10 +1976,8 @@ pub fn cdl_risefall3methods(open: &[f64], high: &[f64], low: &[f64], close: &[f6
                 && high[i-3] < high[i-4] && high[i-2] < high[i-4] && high[i-1] < high[i-4]
                 && c0 == 1
                 && open[i] > close[i-1]
-                && close[i] > close[i-4]
-            {
-                output[i] = 100;
-            } else if c4 == -1 && mid_short
+                && close[i] > close[i-4];
+            let bear = c4 == -1 && mid_short
                 && candle_color(open[i-3], close[i-3]) == 1
                 && candle_color(open[i-2], close[i-2]) == 1
                 && candle_color(open[i-1], close[i-1]) == 1
@@ -2154,10 +1988,8 @@ pub fn cdl_risefall3methods(open: &[f64], high: &[f64], low: &[f64], close: &[f6
                 && low[i-3] > low[i-4] && low[i-2] > low[i-4] && low[i-1] > low[i-4]
                 && c0 == -1
                 && open[i] < close[i-1]
-                && close[i] < close[i-4]
-            {
-                output[i] = -100;
-            }
+                && close[i] < close[i-4];
+            output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         }
         body_long_sum[1] += cr(BODY_LONG, open, high, low, close, i-4) - cr(BODY_LONG, open, high, low, close, i - 4 - BODY_LONG.avg_period);
         body_long_sum[0] += cr(BODY_LONG, open, high, low, close, i) - cr(BODY_LONG, open, high, low, close, i - BODY_LONG.avg_period);
@@ -2194,7 +2026,7 @@ pub fn cdl_stalledpattern(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
     }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == 1
+        output[i] = (candle_color(open[i-2], close[i-2]) == 1
             && candle_color(open[i-1], close[i-1]) == 1
             && candle_color(open[i], close[i]) == 1
             && close[i-1] > close[i-2] && close[i] > close[i-1]
@@ -2204,10 +2036,7 @@ pub fn cdl_stalledpattern(open: &[f64], high: &[f64], low: &[f64], close: &[f64]
             && open[i-1] > open[i-2]
             && open[i-1] <= close[i-2] + ca(NEAR, near_sum[0], open, high, low, close, i-2)
             && real_body(open[i], close[i]) < ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
-            && open[i] >= close[i-1] - real_body(open[i], close[i]) - ca(NEAR, near_sum[1], open, high, low, close, i-1)
-        {
-            output[i] = -100;
-        }
+            && open[i] >= close[i-1] - real_body(open[i], close[i]) - ca(NEAR, near_sum[1], open, high, low, close, i-1)) as i32 * -100;
         body_long_sum[0] += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_long_sum[1] += cr(BODY_LONG, open, high, low, close, i-1) - cr(BODY_LONG, open, high, low, close, i - 1 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
@@ -2242,25 +2071,20 @@ pub fn cdl_tasukigap(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> 
             < ca(NEAR, near_sum, open, high, low, close, i-1);
 
         // Bullish: upside gap, white bar then black bar
-        if real_body_gap_up(open, close, i-1, i-2)
+        let bull = real_body_gap_up(open, close, i-1, i-2)
             && c1 == 1 && c0 == -1
             && open[i] < close[i-1] && open[i] > open[i-1]
             && close[i] < open[i-1]
             && close[i] > open[i-2].max(close[i-2])
-            && near_same
-        {
-            output[i] = c1 * 100;
-        }
+            && near_same;
         // Bearish: downside gap, black bar then white bar
-        else if real_body_gap_down(open, close, i-1, i-2)
+        let bear = real_body_gap_down(open, close, i-1, i-2)
             && c1 == -1 && c0 == 1
             && open[i] < open[i-1] && open[i] > close[i-1]
             && close[i] > open[i-1]
             && close[i] < open[i-2].min(close[i-2])
-            && near_same
-        {
-            output[i] = c1 * 100;
-        }
+            && near_same;
+        output[i] = (bull as i32 | bear as i32) * c1 * 100;
         near_sum += cr(NEAR, open, high, low, close, i-1) - cr(NEAR, open, high, low, close, i - 1 - NEAR.avg_period);
     }
     Ok(output)
@@ -2278,23 +2102,16 @@ pub fn cdl_tristar(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> Ta
     for i in (start - 2 - BODY_DOJI.avg_period)..(start - 2) { body_sum += cr(BODY_DOJI, open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i-2], close[i-2]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i-2)
+        let base = real_body(open[i-2], close[i-2]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i-2)
             && real_body(open[i-1], close[i-1]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i-1)
-            && real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i)
-        {
-            // Bearish: 2nd gaps up
-            if real_body_gap_up(open, close, i-1, i-2)
-                && !real_body_gap_up(open, close, i, i-1)
-            {
-                output[i] = -100;
-            }
-            // Bullish: 2nd gaps down
-            else if real_body_gap_down(open, close, i-1, i-2)
-                && !real_body_gap_down(open, close, i, i-1)
-            {
-                output[i] = 100;
-            }
-        }
+            && real_body(open[i], close[i]) <= ca(BODY_DOJI, body_sum, open, high, low, close, i);
+        // Bearish: 2nd gaps up
+        let bear = base && real_body_gap_up(open, close, i-1, i-2)
+            && !real_body_gap_up(open, close, i, i-1);
+        // Bullish: 2nd gaps down
+        let bull = base && real_body_gap_down(open, close, i-1, i-2)
+            && !real_body_gap_down(open, close, i, i-1);
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
         body_sum += cr(BODY_DOJI, open, high, low, close, i-2) - cr(BODY_DOJI, open, high, low, close, i - 2 - BODY_DOJI.avg_period);
     }
     Ok(output)
@@ -2314,7 +2131,7 @@ pub fn cdl_unique3river(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
     for i in (start - BODY_SHORT.avg_period)..start { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == -1
+        output[i] = (candle_color(open[i-2], close[i-2]) == -1
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             // 2nd: black, harami, lower low
             && candle_color(open[i-1], close[i-1]) == -1
@@ -2324,10 +2141,7 @@ pub fn cdl_unique3river(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) 
             // 3rd: small white, close <= 2nd close
             && candle_color(open[i], close[i]) == 1
             && real_body(open[i], close[i]) < ca(BODY_SHORT, body_short_sum, open, high, low, close, i)
-            && close[i] < close[i-1]
-        {
-            output[i] = 100;
-        }
+            && close[i] < close[i-1]) as i32 * 100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period);
     }
@@ -2348,7 +2162,7 @@ pub fn cdl_upsidegap2crows(open: &[f64], high: &[f64], low: &[f64], close: &[f64
     for i in (start - 1 - BODY_SHORT.avg_period)..(start - 1) { body_short_sum += cr(BODY_SHORT, open, high, low, close, i); }
 
     for i in start..len {
-        if candle_color(open[i-2], close[i-2]) == 1
+        output[i] = (candle_color(open[i-2], close[i-2]) == 1
             && real_body(open[i-2], close[i-2]) > ca(BODY_LONG, body_long_sum, open, high, low, close, i-2)
             // 2nd: short black, gap up
             && candle_color(open[i-1], close[i-1]) == -1
@@ -2358,10 +2172,7 @@ pub fn cdl_upsidegap2crows(open: &[f64], high: &[f64], low: &[f64], close: &[f64
             && candle_color(open[i], close[i]) == -1
             && open[i] > open[i-1]
             && close[i] < close[i-1]
-            && close[i] > close[i-2]
-        {
-            output[i] = -100;
-        }
+            && close[i] > close[i-2]) as i32 * -100;
         body_long_sum += cr(BODY_LONG, open, high, low, close, i-2) - cr(BODY_LONG, open, high, low, close, i - 2 - BODY_LONG.avg_period);
         body_short_sum += cr(BODY_SHORT, open, high, low, close, i-1) - cr(BODY_SHORT, open, high, low, close, i - 1 - BODY_SHORT.avg_period);
     }
@@ -2380,22 +2191,15 @@ pub fn cdl_xsidegap3methods(open: &[f64], high: &[f64], low: &[f64], close: &[f6
         let c1 = candle_color(open[i-1], close[i-1]);
         let c0 = candle_color(open[i], close[i]);
 
-        if c2 == c1 && c0 != c2 {
-            // 3rd opens within 2nd body, closes within 1st body
-            let opens_within = open[i] > open[i-1].min(close[i-1]) && open[i] < open[i-1].max(close[i-1]);
-            let closes_within = close[i] > open[i-2].min(close[i-2]) && close[i] < open[i-2].max(close[i-2]);
-
-            if opens_within && closes_within {
-                // Upside gap
-                if c2 == 1 && real_body_gap_up(open, close, i-1, i-2) {
-                    output[i] = 100;
-                }
-                // Downside gap
-                else if c2 == -1 && real_body_gap_down(open, close, i-1, i-2) {
-                    output[i] = -100;
-                }
-            }
-        }
+        // 3rd opens within 2nd body, closes within 1st body
+        let opens_within = open[i] > open[i-1].min(close[i-1]) && open[i] < open[i-1].max(close[i-1]);
+        let closes_within = close[i] > open[i-2].min(close[i-2]) && close[i] < open[i-2].max(close[i-2]);
+        let base = c2 == c1 && c0 != c2 && opens_within && closes_within;
+        // Upside gap
+        let bull = base && c2 == 1 && real_body_gap_up(open, close, i-1, i-2);
+        // Downside gap
+        let bear = base && c2 == -1 && real_body_gap_down(open, close, i-1, i-2);
+        output[i] = (bull as i32) * 100 - (bear as i32) * 100;
     }
     Ok(output)
 }

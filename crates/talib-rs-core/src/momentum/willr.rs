@@ -65,10 +65,10 @@ pub fn willr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaR
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = high[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if high[j] >= highest {
-                    highest = high[j];
-                    highest_idx = j;
+            for (j, &val) in high[trailing_idx + 1..=today].iter().enumerate() {
+                if val >= highest {
+                    highest = val;
+                    highest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if h >= highest {
@@ -80,10 +80,10 @@ pub fn willr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaR
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = low[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if low[j] <= lowest {
-                    lowest = low[j];
-                    lowest_idx = j;
+            for (j, &val) in low[trailing_idx + 1..=today].iter().enumerate() {
+                if val <= lowest {
+                    lowest = val;
+                    lowest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if l <= lowest {

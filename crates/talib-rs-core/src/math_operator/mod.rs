@@ -40,7 +40,7 @@ pub fn div(input0: &[f64], input1: &[f64]) -> TaResult<Vec<f64>> {
         .collect())
 }
 
-/// 滑动窗口最大值 -- scalar brute rescan (amortized O(n))
+/// 滑动窗口最大值 -- brute rescan with slice iteration (amortized O(n))
 pub fn max(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_period(input, timeperiod)?;
     let len = input.len();
@@ -48,7 +48,6 @@ pub fn max(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut output = vec![0.0_f64; len];
     output[..lookback].fill(f64::NAN);
 
-    // Initialize: scan first window
     let mut highest = input[0];
     let mut highest_idx: usize = 0;
     for j in 1..timeperiod {
@@ -65,12 +64,13 @@ pub fn max(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     while today < len {
         let v = input[today];
         if highest_idx < trailing_idx {
-            highest_idx = trailing_idx;
+            // Rescan window using slice iterator (bounds-check-free)
             highest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] >= highest {
-                    highest = input[j];
-                    highest_idx = j;
+            highest_idx = trailing_idx;
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val >= highest {
+                    highest = val;
+                    highest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v >= highest {
@@ -84,7 +84,7 @@ pub fn max(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     Ok(output)
 }
 
-/// 滑动窗口最大值的索引 -- scalar brute rescan
+/// 滑动窗口最大值的索引 -- brute rescan with slice iteration (amortized O(n))
 pub fn maxindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_period(input, timeperiod)?;
     let len = input.len();
@@ -110,10 +110,11 @@ pub fn maxindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] >= highest {
-                    highest = input[j];
-                    highest_idx = j;
+            // Rescan window using slice iterator (bounds-check-free)
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val >= highest {
+                    highest = val;
+                    highest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v >= highest {
@@ -127,7 +128,7 @@ pub fn maxindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     Ok(output)
 }
 
-/// 滑动窗口最小值 -- scalar brute rescan (amortized O(n))
+/// 滑动窗口最小值 -- brute rescan with slice iteration (amortized O(n))
 pub fn min(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_period(input, timeperiod)?;
     let len = input.len();
@@ -153,10 +154,11 @@ pub fn min(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] <= lowest {
-                    lowest = input[j];
-                    lowest_idx = j;
+            // Rescan window using slice iterator (bounds-check-free)
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val <= lowest {
+                    lowest = val;
+                    lowest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v <= lowest {
@@ -170,7 +172,7 @@ pub fn min(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     Ok(output)
 }
 
-/// 滑动窗口最小值的索引 -- scalar brute rescan
+/// 滑动窗口最小值的索引 -- brute rescan with slice iteration (amortized O(n))
 pub fn minindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     validate_period(input, timeperiod)?;
     let len = input.len();
@@ -196,10 +198,11 @@ pub fn minindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] <= lowest {
-                    lowest = input[j];
-                    lowest_idx = j;
+            // Rescan window using slice iterator (bounds-check-free)
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val <= lowest {
+                    lowest = val;
+                    lowest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v <= lowest {
@@ -229,7 +232,7 @@ pub fn sum(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     Ok(output)
 }
 
-/// MINMAX -- scalar brute rescan, fused min+max (amortized O(n))
+/// MINMAX -- brute rescan with slice iteration, fused min+max (amortized O(n))
 ///
 /// Returns (min_array, max_array).
 /// lookback = timeperiod - 1
@@ -269,10 +272,11 @@ pub fn minmax(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>)
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] >= highest {
-                    highest = input[j];
-                    highest_idx = j;
+            // Rescan window using slice iterator (bounds-check-free)
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val >= highest {
+                    highest = val;
+                    highest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v >= highest {
@@ -283,10 +287,11 @@ pub fn minmax(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>)
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] <= lowest {
-                    lowest = input[j];
-                    lowest_idx = j;
+            // Rescan window using slice iterator (bounds-check-free)
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val <= lowest {
+                    lowest = val;
+                    lowest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v <= lowest {
@@ -303,7 +308,7 @@ pub fn minmax(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>)
     Ok((out_min, out_max))
 }
 
-/// MINMAXINDEX -- scalar brute rescan, fused min+max index (amortized O(n))
+/// MINMAXINDEX -- brute rescan with slice iteration, fused min+max index (amortized O(n))
 ///
 /// Returns (minidx_array, maxidx_array).
 /// lookback = timeperiod - 1
@@ -342,10 +347,11 @@ pub fn minmaxindex(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] >= highest {
-                    highest = input[j];
-                    highest_idx = j;
+            // Rescan window using slice iterator (bounds-check-free)
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val >= highest {
+                    highest = val;
+                    highest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v >= highest {
@@ -356,10 +362,11 @@ pub fn minmaxindex(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = input[trailing_idx];
-            for j in (trailing_idx + 1)..=today {
-                if input[j] <= lowest {
-                    lowest = input[j];
-                    lowest_idx = j;
+            // Rescan window using slice iterator (bounds-check-free)
+            for (j, &val) in input[trailing_idx + 1..=today].iter().enumerate() {
+                if val <= lowest {
+                    lowest = val;
+                    lowest_idx = trailing_idx + 1 + j;
                 }
             }
         } else if v <= lowest {

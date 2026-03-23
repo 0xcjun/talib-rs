@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/indicators-155-blue" alt="155 indicators" />
-  <img src="https://img.shields.io/badge/tests-4562_accuracy-green" alt="4562 accuracy tests" />
+  <img src="https://img.shields.io/badge/tests-4562_accuracy-green" alt="17855 accuracy tests" />
   <img src="https://img.shields.io/badge/unsafe-zero-brightgreen" alt="zero unsafe" />
   <img src="https://img.shields.io/badge/precision-bit--exact-brightgreen" alt="bit-exact" />
   <img src="https://img.shields.io/badge/C_deps-zero-orange" alt="zero C deps" />
@@ -27,7 +27,7 @@
 |---|---|---|
 | Language | C (1999) | Rust (2024) |
 | Installation | Requires C compiler + system libs | `pip install talib-rs` |
-| Accuracy | Reference implementation | **Bit-exact match** (4,562 accuracy tests × 7 data sizes × 6 scenarios) |
+| Accuracy | Reference implementation | **Bit-exact match** (17,855 accuracy tests × 7 data sizes × 6 scenarios) |
 | Performance | Baseline | **1.41x avg faster** at 1M bars (47/90 faster, zero unsafe) |
 | Memory safety | Manual management | Guaranteed by Rust |
 | Python integration | Cython wrapper | PyO3 zero-copy |
@@ -191,7 +191,7 @@ HT_DCPERIOD, HT_DCPHASE, HT_PHASOR, HT_SINE, HT_TRENDMODE
 ## Testing & Verification
 
 ```
-155/155 functions · 4,562 accuracy tests · 7 data sizes × 6 scenarios × 3 seeds · 0 failures
+155/155 functions · 17,855 accuracy tests · 7 data sizes × 6 scenarios × 3 seeds · 0 failures
 ```
 
 ### Test Matrix
@@ -200,7 +200,7 @@ HT_DCPERIOD, HT_DCPHASE, HT_PHASOR, HT_SINE, HT_TRENDMODE
 |-------|------:|------------|
 | **Rust unit tests** | 54 | Core algorithm, SIMD, sliding window, edge cases |
 | **Accuracy cross-validation** | 353 | 155 functions × 6 datasets, rtol=1e-10 |
-| **Multi-dataset alignment** | 4,158 | 33 indicators × 7 sizes × 6 scenarios × 3 seeds |
+| **Multi-dataset alignment** | 17,451 | 158 functions × 7 sizes × 6 scenarios × 3 seeds |
 | **Pattern exact match** | 122 | 61 CDL patterns × 2 datasets, integer signal exact |
 
 ### Verification Methodology
@@ -212,7 +212,7 @@ HT_DCPERIOD, HT_DCPHASE, HT_PHASOR, HT_SINE, HT_TRENDMODE
 
 ```bash
 cargo test                                               # 54 Rust unit tests
-pytest tests/accuracy/ -v                                # 4,562 accuracy tests
+pytest tests/accuracy/ -v                                # 17,855 accuracy tests
 pytest tests/accuracy/ -k "100000"                       # Only 100K dataset
 pytest tests/accuracy/ -k "volatile"                     # Only volatile scenario
 pytest tests/accuracy/test_multi_dataset_alignment.py    # Multi-dataset suite

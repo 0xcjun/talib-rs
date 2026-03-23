@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/indicators-155-blue" alt="155 indicators" />
-  <img src="https://img.shields.io/badge/tests-4562_accuracy-green" alt="4562 accuracy tests" />
+  <img src="https://img.shields.io/badge/tests-4562_accuracy-green" alt="17855 accuracy tests" />
   <img src="https://img.shields.io/badge/unsafe-zero-brightgreen" alt="zero unsafe" />
   <img src="https://img.shields.io/badge/precision-bit--exact-brightgreen" alt="bit-exact" />
   <img src="https://img.shields.io/badge/C_deps-zero-orange" alt="zero C deps" />
@@ -27,7 +27,7 @@
 |---|---|---|
 | 语言 | C (1999) | Rust (2024) |
 | 安装 | 需要 C 编译器 + 系统库 | `pip install talib-rs` |
-| 精度 | 参考实现 | **位精度一致** (4,562 准确性测试 × 7 数据规模 × 6 场景) |
+| 精度 | 参考实现 | **位精度一致** (17,855 准确性测试 × 7 数据规模 × 6 场景) |
 | 性能 | 基准线 | **1M 平均 1.41x 更快** (47/90 更快, 零 unsafe) |
 | 内存安全 | 手动管理 | Rust 编译器保证 |
 | Python 集成 | Cython 封装 | PyO3 零拷贝 |
@@ -35,7 +35,7 @@
 
 ### 核心技术优势
 
-- **位精度一致** — 不是"近似相等"，而是与 C TA-Lib 的 `diff=0`，4,562 准确性测试覆盖 7 种数据规模 × 6 种市场场景 × 3 个随机种子。
+- **位精度一致** — 不是"近似相等"，而是与 C TA-Lib 的 `diff=0`，17,855 准确性测试覆盖 7 种数据规模 × 6 种市场场景 × 3 个随机种子。
 
 - **全面 O(n) 算法** — STDDEV、CORREL、BETA、LINEARREG、KAMA、TRIMA 均使用增量滑动窗口公式。性能与 period 无关：`CORREL(period=200)` 与 `CORREL(period=10)` 耗时相同。
 
@@ -165,14 +165,14 @@ STDDEV, VAR, BETA, CORREL, LINEARREG, LINEARREG_SLOPE, LINEARREG_INTERCEPT, LINE
 ## 测试与验证
 
 ```
-155/155 函数 · 4,562 准确性测试 · 7 种数据规模 × 6 种场景 × 3 种子 · 0 失败
+155/155 函数 · 17,855 准确性测试 · 7 种数据规模 × 6 种场景 × 3 种子 · 0 失败
 ```
 
 | 测试套件 | 用例数 | 说明 |
 |---------|------:|------|
 | **Rust 单元测试** | 54 | 核心算法、SIMD、滑动窗口、边界条件 |
 | **准确性交叉验证** | 353 | 155 函数 × 6 种数据集，rtol=1e-10 |
-| **多数据集对齐** | 4,158 | 33 指标 × 7 规模 × 6 场景 × 3 种子 |
+| **多数据集对齐** | 17,451 | 158 函数 × 7 规模 × 6 场景 × 3 种子 |
 | **K 线形态精确匹配** | 122 | 61 种形态 × 2 数据集，整数信号精确 |
 
 ### 分级容差策略
@@ -186,7 +186,7 @@ STDDEV, VAR, BETA, CORREL, LINEARREG, LINEARREG_SLOPE, LINEARREG_INTERCEPT, LINE
 
 ```bash
 cargo test                                               # 54 Rust 测试
-pytest tests/accuracy/ -v                                # 4,562 准确性测试
+pytest tests/accuracy/ -v                                # 17,855 准确性测试
 pytest tests/accuracy/ -k "100000"                       # 只跑 100K 数据集
 pytest tests/accuracy/ -k "volatile"                     # 只跑高波动场景
 pytest tests/accuracy/test_multi_dataset_alignment.py    # 多数据集套件

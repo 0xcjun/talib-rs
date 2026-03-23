@@ -222,22 +222,24 @@ pub fn stochrsi(
 
     let fastd_arr = compute_ma(&fastk_values, fastd_period, fastd_matype)?;
 
-    // 映射到原始长度
+    // C TA-Lib aligns fastk output start to match fastd (both start at d_start)
     let len = input.len();
     let k_start = timeperiod + fastk_period - 1;
     let d_start = k_start + fastd_period - 1;
     let mut fastk_out = vec![0.0_f64; len];
-    fastk_out[..k_start.min(len)].fill(f64::NAN);
+    fastk_out[..d_start.min(len)].fill(f64::NAN); // align with fastd
     let mut fastd_out = vec![0.0_f64; len];
     fastd_out[..d_start.min(len)].fill(f64::NAN);
 
-    for (j, i) in (k_start..len).enumerate() {
-        if j < fastk_values.len() {
-            fastk_out[i] = fastk_values[j];
+    // fastk: skip first (fastd_period - 1) values to align with fastd
+    let k_skip = fastd_period - 1;
+    for (j, i) in (d_start..len).enumerate() {
+        let idx = k_skip + j;
+        if idx < fastk_values.len() {
+            fastk_out[i] = fastk_values[idx];
         }
     }
 
-    let d_start = k_start + fastd_period - 1;
     for (j, i) in (d_start..len).enumerate() {
         let idx = fastd_period - 1 + j;
         if idx < fastd_arr.len() && !fastd_arr[idx].is_nan() {

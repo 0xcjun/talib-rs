@@ -174,6 +174,8 @@ INDICATORS = [
     _price_indicator('TRIMA_20', 21, T_RTOL, T_ATOL, lambda lib, p: lib.TRIMA(p, 20)),
     _price_indicator('KAMA_30',  31, T_RTOL, T_ATOL, lambda lib, p: lib.KAMA(p, 30)),
     _price_indicator('T3_5',     31, T_RTOL, T_ATOL, lambda lib, p: lib.T3(p, 5, 0.7)),
+    _price_indicator('MA_30',    31, S_RTOL, S_ATOL, lambda lib, p: lib.MA(p, 30, 0)),
+    _price_indicator('MAMA',     64, T_RTOL, T_ATOL, lambda lib, p: lib.MAMA(p, 0.5, 0.05)),
     _price_indicator('BBANDS_20', 21, S_RTOL, S_ATOL, lambda lib, p: lib.BBANDS(p, 20)),
     _price_indicator('MIDPOINT_14', 15, E_RTOL, E_ATOL, lambda lib, p: lib.MIDPOINT(p, 14)),
     _ohlcv_indicator('SAR', 3, T_RTOL, T_ATOL,
@@ -184,6 +186,8 @@ INDICATORS = [
                      lambda lib, o, h, l, c, v: lib.MIDPRICE(h, l, 14)),
     _price_indicator('HT_TRENDLINE', 64, T_RTOL, T_ATOL,
                      lambda lib, p: lib.HT_TRENDLINE(p)),
+    _ohlcv_indicator('MAVP', 30, S_RTOL, S_ATOL,
+                     lambda lib, o, h, l, c, v: lib.MAVP(c, np.full(len(c), 20.0), 2, 30, 0)),
 
     # ---- Momentum ----
     _price_indicator('RSI_14',   15, T_RTOL, T_ATOL, lambda lib, p: lib.RSI(p, 14)),
@@ -197,6 +201,8 @@ INDICATORS = [
                      lambda lib, o, h, l, c, v: lib.STOCH(h, l, c, 5, 3, 0, 3, 0)),
     _ohlcv_indicator('STOCHF', 10, T_RTOL, T_ATOL,
                      lambda lib, o, h, l, c, v: lib.STOCHF(h, l, c, 5, 3, 0)),
+    _price_indicator('STOCHRSI', 25, S_RTOL, S_ATOL,
+                     lambda lib, p: lib.STOCHRSI(p, 14, 5, 3, 0)),
     _ohlcv_indicator('ADX_14', 28, T_RTOL, T_ATOL,
                      lambda lib, o, h, l, c, v: lib.ADX(h, l, c, 14)),
     _ohlcv_indicator('ADXR_14', 52, T_RTOL, T_ATOL,
@@ -272,6 +278,10 @@ INDICATORS = [
                      lambda lib, p: lib.LINEARREG(p, 14)),
     _price_indicator('LINEARREG_SLOPE_14', 15, A_RTOL, A_ATOL,  # crosses zero → near-zero denominator
                      lambda lib, p: lib.LINEARREG_SLOPE(p, 14)),
+    _price_indicator('LINEARREG_ANGLE_14', 15, A_RTOL, A_ATOL,
+                     lambda lib, p: lib.LINEARREG_ANGLE(p, 14)),
+    _price_indicator('LINEARREG_INTERCEPT_14', 15, A_RTOL, A_ATOL,
+                     lambda lib, p: lib.LINEARREG_INTERCEPT(p, 14)),
     _price_indicator('TSF_14', 15, S_RTOL, S_ATOL,
                      lambda lib, p: lib.TSF(p, 14)),
     # CORREL: C TA-Lib returns 0 on small-value data (E(X²)-E(X)² catastrophic cancellation
@@ -284,29 +294,181 @@ INDICATORS = [
     # ---- Math Operators ----
     _price_indicator('MAX_30', 31, E_RTOL, E_ATOL, lambda lib, p: lib.MAX(p, 30)),
     _price_indicator('MIN_30', 31, E_RTOL, E_ATOL, lambda lib, p: lib.MIN(p, 30)),
+    _price_indicator('MAXINDEX_30', 31, E_RTOL, E_ATOL,
+                     lambda lib, p: np.asarray(lib.MAXINDEX(p, 30), dtype=np.float64)),
+    _price_indicator('MININDEX_30', 31, E_RTOL, E_ATOL,
+                     lambda lib, p: np.asarray(lib.MININDEX(p, 30), dtype=np.float64)),
+    _price_indicator('MINMAX_30', 31, E_RTOL, E_ATOL,
+                     lambda lib, p: lib.MINMAX(p, 30)),
+    _price_indicator('MINMAXINDEX_30', 31, E_RTOL, E_ATOL,
+                     lambda lib, p: lib.MINMAXINDEX(p, 30)),
     _price_indicator('SUM_30', 31, S_RTOL, S_ATOL, lambda lib, p: lib.SUM(p, 30)),
     _price_indicator('SQRT',    2, E_RTOL, E_ATOL, lambda lib, p: lib.SQRT(p)),
+    _ohlcv_indicator('ADD', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: lib.ADD(c, h)),
+    _ohlcv_indicator('SUB', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: lib.SUB(c, h)),
+    _ohlcv_indicator('MULT', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: lib.MULT(c, h)),
+    _ohlcv_indicator('DIV', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: lib.DIV(c, h)),
+
+    # ---- Math Transform ----
+    _price_indicator('ACOS', 2, E_RTOL, E_ATOL,
+                     lambda lib, p: lib.ACOS(np.clip(p / p.max(), -1, 1))),
+    _price_indicator('ASIN', 2, E_RTOL, E_ATOL,
+                     lambda lib, p: lib.ASIN(np.clip(p / p.max(), -1, 1))),
+    _price_indicator('ATAN', 2, E_RTOL, E_ATOL, lambda lib, p: lib.ATAN(p)),
+    _price_indicator('COS',  2, E_RTOL, E_ATOL, lambda lib, p: lib.COS(p)),
+    _price_indicator('SIN',  2, E_RTOL, E_ATOL, lambda lib, p: lib.SIN(p)),
+    _price_indicator('TAN',  2, E_RTOL, E_ATOL, lambda lib, p: lib.TAN(p)),
+    _price_indicator('COSH', 2, E_RTOL, E_ATOL,
+                     lambda lib, p: lib.COSH(np.clip(p, -2, 2))),
+    _price_indicator('SINH', 2, E_RTOL, E_ATOL,
+                     lambda lib, p: lib.SINH(np.clip(p, -2, 2))),
+    _price_indicator('TANH', 2, E_RTOL, E_ATOL, lambda lib, p: lib.TANH(p)),
+    _price_indicator('CEIL',  2, E_RTOL, E_ATOL, lambda lib, p: lib.CEIL(p)),
+    _price_indicator('FLOOR', 2, E_RTOL, E_ATOL, lambda lib, p: lib.FLOOR(p)),
+    _price_indicator('EXP',  2, E_RTOL, E_ATOL,
+                     lambda lib, p: lib.EXP(np.clip(p, -5, 5))),
+    _price_indicator('LN',   2, E_RTOL, E_ATOL, lambda lib, p: lib.LN(p)),
+    _price_indicator('LOG10', 2, E_RTOL, E_ATOL, lambda lib, p: lib.LOG10(p)),
 
     # ---- Cycle ----
     _price_indicator('HT_DCPERIOD', 64, T_RTOL, T_ATOL,
                      lambda lib, p: lib.HT_DCPERIOD(p)),
+    _price_indicator('HT_DCPHASE', 64, T_RTOL, T_ATOL,
+                     lambda lib, p: lib.HT_DCPHASE(p)),
+    _price_indicator('HT_PHASOR', 64, T_RTOL, T_ATOL,
+                     lambda lib, p: lib.HT_PHASOR(p)),
     _price_indicator('HT_SINE', 64, T_RTOL, T_ATOL,
                      lambda lib, p: lib.HT_SINE(p)),
+    _price_indicator('HT_TRENDMODE', 64, T_RTOL, T_ATOL,
+                     lambda lib, p: np.asarray(lib.HT_TRENDMODE(p), dtype=np.float64)),
 
-    # ---- Pattern (sample) ----
+    # ---- Pattern (all 61 CDL functions) ----
+    _ohlcv_indicator('CDL2CROWS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDL2CROWS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDL3BLACKCROWS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDL3BLACKCROWS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDL3INSIDE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDL3INSIDE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDL3LINESTRIKE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDL3LINESTRIKE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDL3OUTSIDE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDL3OUTSIDE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDL3STARSINSOUTH', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDL3STARSINSOUTH(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDL3WHITESOLDIERS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDL3WHITESOLDIERS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLABANDONEDBABY', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLABANDONEDBABY(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLADVANCEBLOCK', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLADVANCEBLOCK(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLBELTHOLD', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLBELTHOLD(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLBREAKAWAY', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLBREAKAWAY(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLCLOSINGMARUBOZU', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLCLOSINGMARUBOZU(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLCONCEALBABYSWALL', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLCONCEALBABYSWALL(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLCOUNTERATTACK', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLCOUNTERATTACK(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLDARKCLOUDCOVER', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLDARKCLOUDCOVER(o, h, l, c), dtype=np.float64)),
     _ohlcv_indicator('CDLDOJI', 2, E_RTOL, E_ATOL,
                      lambda lib, o, h, l, c, v: np.asarray(lib.CDLDOJI(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLDOJISTAR', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLDOJISTAR(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLDRAGONFLYDOJI', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLDRAGONFLYDOJI(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLENGULFING', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLENGULFING(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLEVENINGDOJISTAR', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLEVENINGDOJISTAR(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLEVENINGSTAR', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLEVENINGSTAR(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLGAPSIDESIDEWHITE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLGAPSIDESIDEWHITE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLGRAVESTONEDOJI', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLGRAVESTONEDOJI(o, h, l, c), dtype=np.float64)),
     _ohlcv_indicator('CDLHAMMER', 2, E_RTOL, E_ATOL,
                      lambda lib, o, h, l, c, v: np.asarray(lib.CDLHAMMER(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLHANGINGMAN', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLHANGINGMAN(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLHARAMI', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLHARAMI(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLHARAMICROSS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLHARAMICROSS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLHIGHWAVE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLHIGHWAVE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLHIKKAKE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLHIKKAKE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLHIKKAKEMOD', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLHIKKAKEMOD(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLHOMINGPIGEON', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLHOMINGPIGEON(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLIDENTICAL3CROWS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLIDENTICAL3CROWS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLINNECK', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLINNECK(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLINVERTEDHAMMER', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLINVERTEDHAMMER(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLKICKING', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLKICKING(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLKICKINGBYLENGTH', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLKICKINGBYLENGTH(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLLADDERBOTTOM', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLLADDERBOTTOM(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLLONGLEGGEDDOJI', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLLONGLEGGEDDOJI(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLLONGLINE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLLONGLINE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLMARUBOZU', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLMARUBOZU(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLMATCHINGLOW', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLMATCHINGLOW(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLMATHOLD', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLMATHOLD(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLMORNINGDOJISTAR', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLMORNINGDOJISTAR(o, h, l, c), dtype=np.float64)),
     _ohlcv_indicator('CDLMORNINGSTAR', 2, E_RTOL, E_ATOL,
                      lambda lib, o, h, l, c, v: np.asarray(lib.CDLMORNINGSTAR(o, h, l, c), dtype=np.float64)),
-]
-
-# CDL patterns with known threshold boundary differences on real data.
-# Tested separately with match rate >= 99.9% (not exact match).
-CDL_MATCHRATE_INDICATORS = [
-    ('CDLENGULFING', lambda lib, o, h, l, c, v: np.asarray(lib.CDLENGULFING(o, h, l, c), dtype=np.float64)),
-    ('CDL3BLACKCROWS', lambda lib, o, h, l, c, v: np.asarray(lib.CDL3BLACKCROWS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLONNECK', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLONNECK(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLPIERCING', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLPIERCING(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLRICKSHAWMAN', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLRICKSHAWMAN(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLRISEFALL3METHODS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLRISEFALL3METHODS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLSEPARATINGLINES', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLSEPARATINGLINES(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLSHOOTINGSTAR', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLSHOOTINGSTAR(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLSHORTLINE', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLSHORTLINE(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLSPINNINGTOP', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLSPINNINGTOP(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLSTALLEDPATTERN', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLSTALLEDPATTERN(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLSTICKSANDWICH', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLSTICKSANDWICH(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLTAKURI', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLTAKURI(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLTASUKIGAP', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLTASUKIGAP(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLTHRUSTING', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLTHRUSTING(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLTRISTAR', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLTRISTAR(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLUNIQUE3RIVER', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLUNIQUE3RIVER(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLUPSIDEGAP2CROWS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLUPSIDEGAP2CROWS(o, h, l, c), dtype=np.float64)),
+    _ohlcv_indicator('CDLXSIDEGAP3METHODS', 2, E_RTOL, E_ATOL,
+                     lambda lib, o, h, l, c, v: np.asarray(lib.CDLXSIDEGAP3METHODS(o, h, l, c), dtype=np.float64)),
 ]
 
 # ============================================================
@@ -348,34 +510,6 @@ def test_crypto_alignment(symbol, name, min_n, rtol, atol, needs_ohlcv, fn):
         theirs = fn(c_talib, c)
 
     _compare(ours, theirs, f"{name}@{symbol}", rtol, atol)
-
-
-# ---- Crypto CDL match rate tests (>= 99.9% signal match) ----
-
-_cdl_mr_params = []
-if DATA_AVAILABLE:
-    for symbol in _crypto_sample_symbols:
-        for name, fn in CDL_MATCHRATE_INDICATORS:
-            _cdl_mr_params.append(
-                pytest.param(symbol, name, fn, id=f"crypto_{symbol}_{name}_matchrate")
-            )
-
-
-@skipif_no_data
-@pytest.mark.parametrize("symbol,name,fn", _cdl_mr_params)
-def test_crypto_cdl_matchrate(symbol, name, fn):
-    o, h, l, c, v = _get_crypto_ohlcv(symbol)
-    ours = fn(rs, o, h, l, c, v)
-    theirs = fn(c_talib, o, h, l, c, v)
-    n = len(ours)
-    match = np.sum(ours == theirs)
-    rate = match / n
-    # CDLENGULFING has ~88-91% match rate on crypto data (implementation difference
-    # in body-size threshold handling). CDL3BLACKCROWS has >99.9%.
-    min_rate = 0.85 if name == 'CDLENGULFING' else 0.999
-    assert rate >= min_rate, (
-        f"{name}@{symbol}: match rate {rate:.4%} ({n - match}/{n} differ)"
-    )
 
 
 # ---- A-share price-only tests ----

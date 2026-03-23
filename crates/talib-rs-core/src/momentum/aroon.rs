@@ -57,47 +57,34 @@ pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>
     let mut trailing_idx = 1;
     let mut today = timeperiod + 1;
 
-    // Pre-compute 100/period for strength reduction (avoid division in loop)
-    let inv_period = 100.0 / period_f;
-
     while today < len {
         let h = high[today];
         let l = low[today];
-        let need_h_rescan = highest_idx < trailing_idx;
-        let need_l_rescan = lowest_idx < trailing_idx;
 
-        // Fused rescan: when both need rescan, single pass over window
-        if need_h_rescan || need_l_rescan {
-            if need_h_rescan {
-                highest_idx = trailing_idx;
-                highest = high[trailing_idx];
-            }
-            if need_l_rescan {
-                lowest_idx = trailing_idx;
-                lowest = low[trailing_idx];
-            }
+        if highest_idx < trailing_idx {
+            highest_idx = trailing_idx;
+            highest = high[trailing_idx];
             for j in (trailing_idx + 1)..=today {
-                if need_h_rescan && high[j] >= highest {
-                    highest = high[j];
-                    highest_idx = j;
-                }
-                if need_l_rescan && low[j] <= lowest {
-                    lowest = low[j];
-                    lowest_idx = j;
-                }
+                if high[j] >= highest { highest = high[j]; highest_idx = j; }
             }
-        }
-        if !need_h_rescan && h >= highest {
+        } else if h >= highest {
             highest_idx = today;
             highest = h;
         }
-        if !need_l_rescan && l <= lowest {
+
+        if lowest_idx < trailing_idx {
+            lowest_idx = trailing_idx;
+            lowest = low[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if low[j] <= lowest { lowest = low[j]; lowest_idx = j; }
+            }
+        } else if l <= lowest {
             lowest_idx = today;
             lowest = l;
         }
 
-        aroon_up[today] = (period_f - (today - highest_idx) as f64) * inv_period;
-        aroon_down[today] = (period_f - (today - lowest_idx) as f64) * inv_period;
+        aroon_up[today] = 100.0 * (period_f - (today - highest_idx) as f64) / period_f;
+        aroon_down[today] = 100.0 * (period_f - (today - lowest_idx) as f64) / period_f;
         trailing_idx += 1;
         today += 1;
     }
@@ -158,27 +145,35 @@ pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f
 
     let mut trailing_idx = 1;
     let mut today = timeperiod + 1;
-    let inv_period = 100.0 / period_f;
 
     while today < len {
         let h = high[today];
         let l = low[today];
-        let need_h = highest_idx < trailing_idx;
-        let need_l = lowest_idx < trailing_idx;
 
-        if need_h || need_l {
-            if need_h { highest_idx = trailing_idx; highest = high[trailing_idx]; }
-            if need_l { lowest_idx = trailing_idx; lowest = low[trailing_idx]; }
+        if highest_idx < trailing_idx {
+            highest_idx = trailing_idx;
+            highest = high[trailing_idx];
             for j in (trailing_idx + 1)..=today {
-                if need_h && high[j] >= highest { highest = high[j]; highest_idx = j; }
-                if need_l && low[j] <= lowest { lowest = low[j]; lowest_idx = j; }
+                if high[j] >= highest { highest = high[j]; highest_idx = j; }
             }
+        } else if h >= highest {
+            highest_idx = today;
+            highest = h;
         }
-        if !need_h && h >= highest { highest_idx = today; highest = h; }
-        if !need_l && l <= lowest { lowest_idx = today; lowest = l; }
 
-        let up = (period_f - (today - highest_idx) as f64) * inv_period;
-        let down = (period_f - (today - lowest_idx) as f64) * inv_period;
+        if lowest_idx < trailing_idx {
+            lowest_idx = trailing_idx;
+            lowest = low[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if low[j] <= lowest { lowest = low[j]; lowest_idx = j; }
+            }
+        } else if l <= lowest {
+            lowest_idx = today;
+            lowest = l;
+        }
+
+        let up = 100.0 * (period_f - (today - highest_idx) as f64) / period_f;
+        let down = 100.0 * (period_f - (today - lowest_idx) as f64) / period_f;
         output[today] = up - down;
         trailing_idx += 1;
         today += 1;

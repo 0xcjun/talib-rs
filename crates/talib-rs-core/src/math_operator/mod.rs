@@ -265,37 +265,31 @@ pub fn minmax(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>)
 
     while today < len {
         let v = input[today];
-        let need_max_rescan = highest_idx < trailing_idx;
-        let need_min_rescan = lowest_idx < trailing_idx;
 
-        // Fused rescan: scan once for both min and max when either expires
-        if need_max_rescan || need_min_rescan {
-            if need_max_rescan {
-                highest_idx = trailing_idx;
-                highest = input[trailing_idx];
-            }
-            if need_min_rescan {
-                lowest_idx = trailing_idx;
-                lowest = input[trailing_idx];
-            }
+        if highest_idx < trailing_idx {
+            highest_idx = trailing_idx;
+            highest = input[trailing_idx];
             for j in (trailing_idx + 1)..=today {
-                let val = input[j];
-                if need_max_rescan && val >= highest {
-                    highest = val;
+                if input[j] >= highest {
+                    highest = input[j];
                     highest_idx = j;
                 }
-                if need_min_rescan && val <= lowest {
-                    lowest = val;
-                    lowest_idx = j;
-                }
             }
-        }
-        // Update with new value (when no rescan was needed for that extremum)
-        if !need_max_rescan && v >= highest {
+        } else if v >= highest {
             highest_idx = today;
             highest = v;
         }
-        if !need_min_rescan && v <= lowest {
+
+        if lowest_idx < trailing_idx {
+            lowest_idx = trailing_idx;
+            lowest = input[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if input[j] <= lowest {
+                    lowest = input[j];
+                    lowest_idx = j;
+                }
+            }
+        } else if v <= lowest {
             lowest_idx = today;
             lowest = v;
         }

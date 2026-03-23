@@ -10,7 +10,7 @@ pub fn ad(high: &[f64], low: &[f64], close: &[f64], volume: &[f64]) -> TaResult<
         });
     }
 
-    let mut output = Vec::with_capacity(len);
+    let mut output = vec![0.0_f64; len];
     let mut ad_val = 0.0;
     for i in 0..len {
         let hl = high[i] - low[i];
@@ -20,7 +20,7 @@ pub fn ad(high: &[f64], low: &[f64], close: &[f64], volume: &[f64]) -> TaResult<
             0.0
         };
         ad_val += clv * volume[i];
-        output.push(ad_val);
+        output[i] = ad_val;
     }
 
     Ok(output)

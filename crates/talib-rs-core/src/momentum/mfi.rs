@@ -1,10 +1,13 @@
 use crate::error::{TaError, TaResult};
 
-/// Money Flow Index (MFI) — 优化版，减少中间分配
+/// Money Flow Index (MFI) — precomputed tp/mf arrays for cache efficiency
 ///
 /// MFI = 100 - (100 / (1 + Money Flow Ratio))
 /// Money Flow Ratio = Positive Money Flow / Negative Money Flow
 /// lookback = timeperiod
+///
+/// Two temp arrays (tp_arr, mf_arr) trade 16KB allocation at 1K bars
+/// for 4× fewer FP ops per sliding window step at all sizes.
 pub fn mfi(
     high: &[f64],
     low: &[f64],
@@ -33,9 +36,8 @@ pub fn mfi(
         });
     }
 
-    // 合并 tp 和 mf 到单一数组: mf[i] = tp[i] * volume[i]
-    // 我们需要 tp 值来比较方向，和 mf 值做滑动求和
-    // 用两个并排数组: tp_arr 和 mf_arr，但在一次循环里同时计算
+    // Precompute tp and mf arrays — accessed multiple times per window step,
+    // so array reads from L1 cache are faster than recomputing.
     let mut tp_arr = vec![0.0_f64; len];
     let mut mf_arr = vec![0.0_f64; len];
     for i in 0..len {
@@ -47,7 +49,7 @@ pub fn mfi(
     let mut output = vec![0.0_f64; len];
     output[..timeperiod].fill(f64::NAN);
 
-    // 初始窗口
+    // Initial window
     let mut pos_mf = 0.0_f64;
     let mut neg_mf = 0.0_f64;
     for i in 1..=timeperiod {
@@ -67,9 +69,8 @@ pub fn mfi(
         100.0
     };
 
-    // 滑动窗口
+    // Sliding window
     for i in (timeperiod + 1)..len {
-        // 移除旧值
         let old_idx = i - timeperiod;
         let old_tp = tp_arr[old_idx];
         let old_tp_prev = tp_arr[old_idx - 1];
@@ -79,7 +80,7 @@ pub fn mfi(
         } else if old_tp < old_tp_prev {
             neg_mf -= old_mf;
         }
-        // 添加新值
+
         let new_tp = tp_arr[i];
         let new_tp_prev = tp_arr[i - 1];
         let new_mf = mf_arr[i];

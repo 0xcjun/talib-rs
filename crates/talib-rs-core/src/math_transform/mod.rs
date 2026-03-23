@@ -2,24 +2,13 @@
 /// 编译器自动向量化对逐元素操作已经非常高效，无需手动 SIMD。
 /// 使用 4 路循环展开帮助 CPU 流水线。
 
+/// math_transform macro — uses collect() to avoid calloc COW page faults.
+/// `vec![0.0; n]` uses calloc (zero-page mapping), writes trigger page faults.
+/// `iter().map().collect()` allocates with_capacity + extends, no COW.
 macro_rules! math_transform {
     ($name:ident, $op:expr) => {
         pub fn $name(input: &[f64]) -> Vec<f64> {
-            let len = input.len();
-            let mut result = vec![0.0; len];
-            let chunks = len / 4;
-            for i in 0..chunks {
-                let o = i * 4;
-                result[o] = $op(input[o]);
-                result[o + 1] = $op(input[o + 1]);
-                result[o + 2] = $op(input[o + 2]);
-                result[o + 3] = $op(input[o + 3]);
-            }
-            let tail = chunks * 4;
-            for i in tail..len {
-                result[i] = $op(input[i]);
-            }
-            result
+            input.iter().map(|&v| $op(v)).collect()
         }
     };
 }

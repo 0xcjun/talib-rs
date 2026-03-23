@@ -25,37 +25,33 @@ pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     }
 
     let k = 2.0 / (timeperiod as f64 + 1.0);
-    let one_minus_k = 1.0 - k;
-    let p = timeperiod - 1; // EMA1 的 lookback
+    let p = timeperiod - 1;
+    let tp = timeperiod as f64;
 
-    // EMA1: 对 input 做 EMA，结果存入 ema1 数组
-    let mut ema1 = vec![0.0_f64; len];
-    let seed1 = sum_f64(&input[..timeperiod]) / timeperiod as f64;
-    ema1[p] = seed1;
-    let mut ema1_prev = seed1;
-    for i in timeperiod..len {
-        let val = input[i].mul_add(k, ema1_prev * one_minus_k);
-        ema1[i] = val;
-        ema1_prev = val;
+    // Phase 1: Build EMA1 values [p..2p], accumulate SMA for EMA2 seed
+    let seed1 = sum_f64(&input[..timeperiod]) / tp;
+    let mut e1 = seed1;
+    let mut sum2 = seed1;
+    for i in timeperiod..(2 * p + 1) {
+        e1 = k.mul_add(input[i] - e1, e1);
+        sum2 += e1;
     }
 
-    // EMA2: 对 ema1[p..] 的有效值做 EMA
-    let ema2_seed_start = p;
-    let ema2_seed_end = 2 * p + 1;
-    let seed2 = sum_f64(&ema1[ema2_seed_start..ema2_seed_end]) / timeperiod as f64;
+    // Phase 2: EMA2 seeded, compute DEMA output in single fused pass
+    let seed2 = sum2 / tp;
+    let mut e2 = seed2;
 
     let mut output = vec![0.0_f64; len];
-    // 前 lookback 个为 NaN
-    for i in 0..lookback {
-        output[i] = f64::NAN;
-    }
-    let mut ema2_prev = seed2;
-    output[lookback] = 2.0 * ema1[lookback] - ema2_prev;
+    output[..lookback].fill(f64::NAN);
+    // First output: at index lookback = 2*p
+    // Need e1 at lookback — it's the current e1 after phase 1
+    output[lookback] = 2.0 * e1 - e2;
 
+    // Steady state: both EMAs cascade per bar, no intermediate Vec
     for i in (lookback + 1)..len {
-        let e1 = ema1[i];
-        ema2_prev = e1.mul_add(k, ema2_prev * one_minus_k);
-        output[i] = 2.0 * e1 - ema2_prev;
+        e1 = k.mul_add(input[i] - e1, e1);
+        e2 = k.mul_add(e1 - e2, e2);
+        output[i] = 2.0 * e1 - e2;
     }
 
     Ok(output)

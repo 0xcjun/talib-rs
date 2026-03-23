@@ -37,109 +37,89 @@ pub fn sar(high: &[f64], low: &[f64], acceleration: f64, maximum: f64) -> TaResu
         sar_val = high[0];
     }
 
-    let mut prev_low = low[1];
-    let mut prev_high = high[1];
-
-    for i in 1..len {
-        let new_low = low[i];
-        let new_high = high[i];
-        // For i==1, prev stays as initialized (low[1]/high[1] = current bar)
-        // For i>1, update to previous bar
-        if i > 1 {
-            prev_low = low[i - 1];
-            prev_high = high[i - 1];
-        }
+    // Handle i=1 separately to avoid per-iteration branch
+    {
+        let new_low = low[1];
+        let new_high = high[1];
+        let p_low = low[1];  // C TA-Lib: prev = current for first bar
+        let p_high = high[1];
 
         if is_long {
             if new_low <= sar_val {
                 is_long = false;
                 sar_val = ep;
-
-                if sar_val < prev_high {
-                    sar_val = prev_high;
-                }
-                if sar_val < new_high {
-                    sar_val = new_high;
-                }
-
-                output[i] = sar_val;
-
+                sar_val = sar_val.max(p_high).max(new_high);
+                output[1] = sar_val;
                 af = acceleration;
                 ep = new_low;
-
-                sar_val = sar_val + af * (ep - sar_val);
-
-                if sar_val < prev_high {
-                    sar_val = prev_high;
-                }
-                if sar_val < new_high {
-                    sar_val = new_high;
-                }
+                sar_val += af * (ep - sar_val);
+                sar_val = sar_val.max(p_high).max(new_high);
             } else {
-                output[i] = sar_val;
-
-                if new_high > ep {
-                    ep = new_high;
-                    af += acceleration;
-                    if af > maximum {
-                        af = maximum;
-                    }
-                }
-
-                sar_val = sar_val + af * (ep - sar_val);
-
-                if sar_val > prev_low {
-                    sar_val = prev_low;
-                }
-                if sar_val > new_low {
-                    sar_val = new_low;
-                }
+                output[1] = sar_val;
+                if new_high > ep { ep = new_high; af = (af + acceleration).min(maximum); }
+                sar_val += af * (ep - sar_val);
+                sar_val = sar_val.min(p_low).min(new_low);
             }
+        } else if new_high >= sar_val {
+            is_long = true;
+            sar_val = ep;
+            sar_val = sar_val.min(p_low).min(new_low);
+            output[1] = sar_val;
+            af = acceleration;
+            ep = new_high;
+            sar_val += af * (ep - sar_val);
+            sar_val = sar_val.min(p_low).min(new_low);
         } else {
-            if new_high >= sar_val {
-                is_long = true;
+            output[1] = sar_val;
+            if new_low < ep { ep = new_low; af = (af + acceleration).min(maximum); }
+            sar_val += af * (ep - sar_val);
+            sar_val = sar_val.max(p_high).max(new_high);
+        }
+    }
+
+    // Main loop: i >= 2, no branch for i==1
+    // Use shift pattern: prev values from registers, not array reads
+    let mut prev_low = low[1];
+    let mut prev_high = high[1];
+
+    for i in 2..len {
+        let new_low = low[i];
+        let new_high = high[i];
+        let p_low = prev_low;
+        let p_high = prev_high;
+        prev_low = new_low;
+        prev_high = new_high;
+
+        if is_long {
+            if new_low <= sar_val {
+                is_long = false;
                 sar_val = ep;
-
-                if sar_val > prev_low {
-                    sar_val = prev_low;
-                }
-                if sar_val > new_low {
-                    sar_val = new_low;
-                }
-
+                sar_val = sar_val.max(p_high).max(new_high);
                 output[i] = sar_val;
-
                 af = acceleration;
-                ep = new_high;
-
-                sar_val = sar_val + af * (ep - sar_val);
-
-                if sar_val > prev_low {
-                    sar_val = prev_low;
-                }
-                if sar_val > new_low {
-                    sar_val = new_low;
-                }
+                ep = new_low;
+                sar_val += af * (ep - sar_val);
+                sar_val = sar_val.max(p_high).max(new_high);
             } else {
                 output[i] = sar_val;
-
-                if new_low < ep {
-                    ep = new_low;
-                    af += acceleration;
-                    if af > maximum {
-                        af = maximum;
-                    }
-                }
-
-                sar_val = sar_val + af * (ep - sar_val);
-
-                if sar_val < prev_high {
-                    sar_val = prev_high;
-                }
-                if sar_val < new_high {
-                    sar_val = new_high;
-                }
+                if new_high > ep { ep = new_high; af = (af + acceleration).min(maximum); }
+                sar_val += af * (ep - sar_val);
+                sar_val = sar_val.min(p_low).min(new_low);
             }
+        } else if new_high >= sar_val {
+            is_long = true;
+            sar_val = ep;
+            sar_val = sar_val.min(p_low).min(new_low);
+            output[i] = sar_val;
+            af = acceleration;
+            ep = new_high;
+            sar_val += af * (ep - sar_val);
+            sar_val = sar_val.min(p_low).min(new_low);
+        } else {
+            output[i] = sar_val;
+            if new_low < ep { ep = new_low; af = (af + acceleration).min(maximum); }
+            sar_val += af * (ep - sar_val);
+            sar_val = sar_val.max(p_high).max(new_high);
         }
     }
 
@@ -210,115 +190,92 @@ pub fn sar_ext(
     af_long = accelerationinitlong;
     af_short = accelerationinitshort;
 
-    let mut prev_low = low[1];
-    let mut prev_high = high[1];
-
-    for i in 1..len {
-        let new_low = low[i];
-        let new_high = high[i];
-        if i > 1 {
-            prev_low = low[i - 1];
-            prev_high = high[i - 1];
-        }
+    // Handle i=1 separately to avoid per-iteration branch
+    {
+        let new_low = low[1];
+        let new_high = high[1];
+        let p_low = low[1];
+        let p_high = high[1];
 
         if is_long {
             if new_low <= sar_val {
                 is_long = false;
                 sar_val = ep;
-
-                if sar_val < prev_high {
-                    sar_val = prev_high;
-                }
-                if sar_val < new_high {
-                    sar_val = new_high;
-                }
-
-                if offsetonreverse != 0.0 {
-                    sar_val += sar_val * offsetonreverse;
-                }
-
-                output[i] = -sar_val;
-
+                sar_val = sar_val.max(p_high).max(new_high);
+                if offsetonreverse != 0.0 { sar_val += sar_val * offsetonreverse; }
+                output[1] = -sar_val;
                 af_short = accelerationinitshort;
                 ep = new_low;
-
-                sar_val = sar_val + af_short * (ep - sar_val);
-
-                if sar_val < prev_high {
-                    sar_val = prev_high;
-                }
-                if sar_val < new_high {
-                    sar_val = new_high;
-                }
+                sar_val += af_short * (ep - sar_val);
+                sar_val = sar_val.max(p_high).max(new_high);
             } else {
-                output[i] = sar_val;
-
-                if new_high > ep {
-                    ep = new_high;
-                    af_long += accelerationlong;
-                    if af_long > accelerationmaxlong {
-                        af_long = accelerationmaxlong;
-                    }
-                }
-
-                sar_val = sar_val + af_long * (ep - sar_val);
-
-                if sar_val > prev_low {
-                    sar_val = prev_low;
-                }
-                if sar_val > new_low {
-                    sar_val = new_low;
-                }
+                output[1] = sar_val;
+                if new_high > ep { ep = new_high; af_long = (af_long + accelerationlong).min(accelerationmaxlong); }
+                sar_val += af_long * (ep - sar_val);
+                sar_val = sar_val.min(p_low).min(new_low);
             }
+        } else if new_high >= sar_val {
+            is_long = true;
+            sar_val = ep;
+            sar_val = sar_val.min(p_low).min(new_low);
+            if offsetonreverse != 0.0 { sar_val -= sar_val * offsetonreverse; }
+            output[1] = sar_val;
+            af_long = accelerationinitlong;
+            ep = new_high;
+            sar_val += af_long * (ep - sar_val);
+            sar_val = sar_val.min(p_low).min(new_low);
         } else {
-            if new_high >= sar_val {
-                is_long = true;
+            output[1] = -sar_val;
+            if new_low < ep { ep = new_low; af_short = (af_short + accelerationshort).min(accelerationmaxshort); }
+            sar_val += af_short * (ep - sar_val);
+            sar_val = sar_val.max(p_high).max(new_high);
+        }
+    }
+
+    // Main loop: i >= 2, shift pattern for prev values
+    let mut prev_low = low[1];
+    let mut prev_high = high[1];
+
+    for i in 2..len {
+        let new_low = low[i];
+        let new_high = high[i];
+        let p_low = prev_low;
+        let p_high = prev_high;
+        prev_low = new_low;
+        prev_high = new_high;
+
+        if is_long {
+            if new_low <= sar_val {
+                is_long = false;
                 sar_val = ep;
-
-                if sar_val > prev_low {
-                    sar_val = prev_low;
-                }
-                if sar_val > new_low {
-                    sar_val = new_low;
-                }
-
-                if offsetonreverse != 0.0 {
-                    sar_val -= sar_val * offsetonreverse;
-                }
-
-                output[i] = sar_val;
-
-                af_long = accelerationinitlong;
-                ep = new_high;
-
-                sar_val = sar_val + af_long * (ep - sar_val);
-
-                if sar_val > prev_low {
-                    sar_val = prev_low;
-                }
-                if sar_val > new_low {
-                    sar_val = new_low;
-                }
-            } else {
+                sar_val = sar_val.max(p_high).max(new_high);
+                if offsetonreverse != 0.0 { sar_val += sar_val * offsetonreverse; }
                 output[i] = -sar_val;
-
-                if new_low < ep {
-                    ep = new_low;
-                    af_short += accelerationshort;
-                    if af_short > accelerationmaxshort {
-                        af_short = accelerationmaxshort;
-                    }
-                }
-
-                sar_val = sar_val + af_short * (ep - sar_val);
-
-                if sar_val < prev_high {
-                    sar_val = prev_high;
-                }
-                if sar_val < new_high {
-                    sar_val = new_high;
-                }
+                af_short = accelerationinitshort;
+                ep = new_low;
+                sar_val += af_short * (ep - sar_val);
+                sar_val = sar_val.max(p_high).max(new_high);
+            } else {
+                output[i] = sar_val;
+                if new_high > ep { ep = new_high; af_long = (af_long + accelerationlong).min(accelerationmaxlong); }
+                sar_val += af_long * (ep - sar_val);
+                sar_val = sar_val.min(p_low).min(new_low);
             }
+        } else if new_high >= sar_val {
+            is_long = true;
+            sar_val = ep;
+            sar_val = sar_val.min(p_low).min(new_low);
+            if offsetonreverse != 0.0 { sar_val -= sar_val * offsetonreverse; }
+            output[i] = sar_val;
+            af_long = accelerationinitlong;
+            ep = new_high;
+            sar_val += af_long * (ep - sar_val);
+            sar_val = sar_val.min(p_low).min(new_low);
+        } else {
+            output[i] = -sar_val;
+            if new_low < ep { ep = new_low; af_short = (af_short + accelerationshort).min(accelerationmaxshort); }
+            sar_val += af_short * (ep - sar_val);
+            sar_val = sar_val.max(p_high).max(new_high);
         }
     }
 

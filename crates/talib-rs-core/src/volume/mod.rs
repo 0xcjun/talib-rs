@@ -57,8 +57,7 @@ pub fn adosc(
     output[..lookback].fill(f64::NAN);
     let fast_k = 2.0 / (fastperiod as f64 + 1.0);
     let slow_k = 2.0 / (slowperiod as f64 + 1.0);
-    let fast_k1 = 1.0 - fast_k;
-    let slow_k1 = 1.0 - slow_k;
+    // k1 variables removed — using C TA-Lib formulation: k*(x-prev)+prev
 
     let hl0 = high[0] - low[0];
     let ad0 = if hl0 > 0.0 {
@@ -83,8 +82,8 @@ pub fn adosc(
             0.0
         };
         ad_val += clv * v;
-        fast_ema = ad_val.mul_add(fast_k, fast_ema * fast_k1);
-        slow_ema = ad_val.mul_add(slow_k, slow_ema * slow_k1);
+        fast_ema = fast_k.mul_add(ad_val - fast_ema, fast_ema);
+        slow_ema = slow_k.mul_add(ad_val - slow_ema, slow_ema);
         if i >= lookback {
             output[i] = fast_ema - slow_ema;
         }
@@ -106,6 +105,9 @@ pub fn obv(close: &[f64], volume: &[f64]) -> TaResult<Vec<f64>> {
         return Ok(vec![]);
     }
 
+    // push() is intentional: at 1M bars, push() avoids calloc COW page faults
+    // that vec![0.0;n]+indexed would cause (0.98x vs 1.94x at 1M).
+    // Tradeoff: 0.42x at 1K due to per-push capacity check overhead.
     let mut output = Vec::with_capacity(len);
     let mut acc = volume[0];
     output.push(acc);

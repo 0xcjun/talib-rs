@@ -1,9 +1,10 @@
 use crate::error::{TaError, TaResult};
 
-/// EMA core — uses `mul_add` for hardware FMA instruction.
+/// EMA core — matches C TA-Lib formulation for optimal critical path.
 ///
-/// `input[i].mul_add(k, prev * (1-k))` compiles to a single `fmadd` on ARM,
-/// saving one instruction vs separate `fmul` + `fadd` (~7% speedup).
+/// C TA-Lib: `prevMA = (inReal[today] - prevMA) * k + prevMA`
+/// ARM critical path: FSUB(2cy) → FMADD(4cy) = 6 cycles/iter
+/// vs old `x*k + prev*(1-k)`: FMUL(3cy) → FMADD(4cy) = 7 cycles/iter
 pub fn ema_core(input: &[f64], period: usize, k: f64) -> TaResult<Vec<f64>> {
     let len = input.len();
     if period == 0 {
@@ -21,7 +22,6 @@ pub fn ema_core(input: &[f64], period: usize, k: f64) -> TaResult<Vec<f64>> {
     }
 
     let lookback = period - 1;
-    let one_minus_k = 1.0 - k;
 
     // SMA seed
     let sma_seed: f64 = crate::simd::sum_f64(&input[..period]) / period as f64;
@@ -31,10 +31,11 @@ pub fn ema_core(input: &[f64], period: usize, k: f64) -> TaResult<Vec<f64>> {
     output[..lookback].fill(f64::NAN);
     output[lookback] = sma_seed;
 
-    // EMA recursion with hardware FMA
+    // EMA recursion: k*(x - prev) + prev — C TA-Lib formulation
+    // Eliminates (1-k) multiplication, shorter critical path
     let mut prev = sma_seed;
     for i in period..len {
-        let val = input[i].mul_add(k, prev * one_minus_k);
+        let val = k.mul_add(input[i] - prev, prev);
         output[i] = val;
         prev = val;
     }

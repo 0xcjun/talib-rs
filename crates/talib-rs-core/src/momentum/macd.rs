@@ -62,8 +62,8 @@ pub fn macd(
     let mut slow_ema = slow_seed;
     let mut fast_ema = fast_seed;
     for i in sp..len {
-        slow_ema = input[i].mul_add(k_slow, slow_ema * (1.0 - k_slow));
-        fast_ema = input[i].mul_add(k_fast, fast_ema * (1.0 - k_fast));
+        slow_ema = k_slow.mul_add(input[i] - slow_ema, slow_ema);
+        fast_ema = k_fast.mul_add(input[i] - fast_ema, fast_ema);
         macd_values.push(fast_ema - slow_ema);
     }
 
@@ -90,7 +90,7 @@ pub fn macd(
 
     for i in signalperiod..macd_values.len() {
         let bar = sp - 1 + i;
-        signal_ema = macd_values[i].mul_add(k_signal, signal_ema * (1.0 - k_signal));
+        signal_ema = k_signal.mul_add(macd_values[i] - signal_ema, signal_ema);
         macd_line[bar] = macd_values[i];
         signal_line[bar] = signal_ema;
         histogram[bar] = macd_values[i] - signal_ema;
@@ -101,7 +101,7 @@ pub fn macd(
 
 /// MACD with controllable MA Type
 ///
-/// Fast path for all-EMA: single-pass scalar (same as macd(), reuses its structure).
+/// Fast path for all-EMA: inline single-pass (eliminates 5 Vec allocations).
 /// Generic path: 3× compute_ma with contiguous NaN detection.
 pub fn macd_ext(
     input: &[f64],
@@ -117,6 +117,13 @@ pub fn macd_ext(
     } else {
         (slowperiod, fastperiod)
     };
+
+    // C TA-Lib MACDEXT(all-EMA) produces identical results to MACD —
+    // it uses MACD-style aligned seeding, not independent EMA seeding.
+    // Delegate to macd() which already has correct aligned seeding.
+    if fastmatype == MaType::Ema && slowmatype == MaType::Ema && signalmatype == MaType::Ema {
+        return macd(input, fastperiod, slowperiod, signalperiod);
+    }
 
     let len = input.len();
     let fast_ma = compute_ma(input, fp, fastmatype)?;
@@ -168,8 +175,8 @@ pub fn macd_fix(input: &[f64], signalperiod: usize) -> TaResult<(Vec<f64>, Vec<f
     let len = input.len();
     let fp = 12usize;
     let sp = 26usize;
-    let k_fast = 0.15;  // C TA-Lib fixed k for period 12
-    let k_slow = 0.075; // C TA-Lib fixed k for period 26
+    let k_fast: f64 = 0.15;  // C TA-Lib fixed k for period 12
+    let k_slow: f64 = 0.075; // C TA-Lib fixed k for period 26
 
     let lookback = sp - 1 + signalperiod - 1;
     if len <= lookback {
@@ -191,8 +198,8 @@ pub fn macd_fix(input: &[f64], signalperiod: usize) -> TaResult<(Vec<f64>, Vec<f
     let mut slow_ema = slow_seed;
     let mut fast_ema = fast_seed;
     for i in sp..len {
-        slow_ema = input[i].mul_add(k_slow, slow_ema * (1.0 - k_slow));
-        fast_ema = input[i].mul_add(k_fast, fast_ema * (1.0 - k_fast));
+        slow_ema = k_slow.mul_add(input[i] - slow_ema, slow_ema);
+        fast_ema = k_fast.mul_add(input[i] - fast_ema, fast_ema);
         macd_values.push(fast_ema - slow_ema);
     }
 
@@ -215,7 +222,7 @@ pub fn macd_fix(input: &[f64], signalperiod: usize) -> TaResult<(Vec<f64>, Vec<f
 
     for i in signalperiod..macd_values.len() {
         let bar = sp - 1 + i;
-        sig_ema = macd_values[i].mul_add(k_signal, sig_ema * (1.0 - k_signal));
+        sig_ema = k_signal.mul_add(macd_values[i] - sig_ema, sig_ema);
         macd_line[bar] = macd_values[i];
         signal_line[bar] = sig_ema;
         histogram[bar] = macd_values[i] - sig_ema;

@@ -455,18 +455,24 @@ class TestPriceTransformConsistency:
 # ============================================================
 
 class TestStatisticConsistency:
+    # Rust 使用 O(n) 滑动累加器（sum += new - old），C 使用 O(n·p) 逐窗口重计算。
+    # 算法差异导致浮点累积漂移：1000 点数据上 max rel_diff ≈ 2e-9。
+    # 以下指标分两组：per-window 计算的用严格容差，sliding 的用 1e-9。
+    _SLIDING_RTOL = 3e-9
 
     @pytest.mark.parametrize("ds_name", ['random_1k', 'volatile'])
     @pytest.mark.parametrize("period", [5, 14, 30])
     def test_STDDEV(self, ds_name, period):
         _, _, _, close, _ = DATASETS[ds_name]
         compare(rs.STDDEV(close, period, 1.0),
-                c_talib.STDDEV(close, timeperiod=period, nbdev=1.0), f"STDDEV({period})")
+                c_talib.STDDEV(close, timeperiod=period, nbdev=1.0), f"STDDEV({period})",
+                rtol=self._SLIDING_RTOL)
 
     @pytest.mark.parametrize("ds_name", ['random_1k'])
     def test_VAR(self, ds_name):
         _, _, _, close, _ = DATASETS[ds_name]
-        compare(rs.VAR(close, 5, 1.0), c_talib.VAR(close, timeperiod=5, nbdev=1.0))
+        compare(rs.VAR(close, 5, 1.0), c_talib.VAR(close, timeperiod=5, nbdev=1.0),
+                rtol=self._SLIDING_RTOL)
 
     @pytest.mark.parametrize("ds_name", ['random_1k'])
     def test_BETA(self, ds_name):
@@ -478,15 +484,25 @@ class TestStatisticConsistency:
     def test_CORREL(self, ds_name):
         _, _, _, close, _ = DATASETS[ds_name]
         close2 = _random_walk(len(close), 77)
-        compare(rs.CORREL(close, close2, 30), c_talib.CORREL(close, close2, timeperiod=30))
+        compare(rs.CORREL(close, close2, 30), c_talib.CORREL(close, close2, timeperiod=30),
+                rtol=self._SLIDING_RTOL)
 
     @pytest.mark.parametrize("ds_name", ['random_1k'])
-    @pytest.mark.parametrize("func_name", ['LINEARREG', 'LINEARREG_SLOPE', 'LINEARREG_INTERCEPT', 'LINEARREG_ANGLE', 'TSF'])
-    def test_linearreg_family(self, ds_name, func_name):
+    @pytest.mark.parametrize("func_name", ['LINEARREG', 'LINEARREG_INTERCEPT', 'TSF'])
+    def test_linearreg_strict(self, ds_name, func_name):
         _, _, _, close, _ = DATASETS[ds_name]
         ours = getattr(rs, func_name)(close, 14)
         theirs = getattr(c_talib, func_name)(close, timeperiod=14)
         compare(ours, theirs, func_name)
+
+    @pytest.mark.parametrize("ds_name", ['random_1k'])
+    @pytest.mark.parametrize("func_name", ['LINEARREG_SLOPE', 'LINEARREG_ANGLE'])
+    def test_linearreg_sliding(self, ds_name, func_name):
+        # SLOPE 和 ANGLE 的滑动 ws 累加器在小值处 rel_diff 可达 2e-9
+        _, _, _, close, _ = DATASETS[ds_name]
+        ours = getattr(rs, func_name)(close, 14)
+        theirs = getattr(c_talib, func_name)(close, timeperiod=14)
+        compare(ours, theirs, func_name, rtol=self._SLIDING_RTOL)
 
 
 # ============================================================
@@ -616,13 +632,9 @@ class TestPatternConsistency:
 
     @pytest.mark.parametrize("func_name", CDL_FUNCTIONS)
     @pytest.mark.parametrize("ds_name", ['random_1k', 'volatile'])
-    def test_pattern_shape_and_range(self, func_name, ds_name):
-        """验证输出长度和值域 [-100, 0, 100]"""
+    def test_pattern_exact_match(self, func_name, ds_name):
+        """验证 pattern 信号精确匹配 C TA-Lib（整数输出，无浮点问题）"""
         o, h, l, c, _ = DATASETS[ds_name]
-        ours = np.asarray(getattr(rs, func_name)(o, h, l, c))
-        theirs = np.asarray(getattr(c_talib, func_name)(o, h, l, c))
-        assert ours.shape == theirs.shape, f"{func_name}: shape mismatch"
-        # 两边都应只有 -100, 0, 100
-        valid_vals = {-100, 0, 100}
-        our_unique = set(np.unique(ours))
-        assert our_unique.issubset(valid_vals), f"{func_name}: invalid values {our_unique - valid_vals}"
+        ours = np.asarray(getattr(rs, func_name)(o, h, l, c), dtype=np.float64)
+        theirs = np.asarray(getattr(c_talib, func_name)(o, h, l, c), dtype=np.float64)
+        compare(ours, theirs, func_name)

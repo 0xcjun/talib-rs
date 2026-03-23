@@ -245,6 +245,20 @@ pub fn HT_TRENDLINE(py: Python<'_>, input: PyReadonlyArray1<f64>) -> PyResult<Py
     Ok(to_py_array(py, result))
 }
 
+#[pyfunction]
+#[pyo3(signature = (input, timeperiod=30, matype=0))]
+pub fn MA(
+    py: Python<'_>,
+    input: PyReadonlyArray1<f64>,
+    timeperiod: usize,
+    matype: i32,
+) -> PyResult<Py<PyArray1<f64>>> {
+    let ma = core::MaType::try_from(matype)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+    let result = ta_err!(core::overlap::ma(input.as_slice()?, timeperiod, ma))?;
+    Ok(to_py_array(py, result))
+}
+
 // ============================================================
 // Momentum Indicators
 // ============================================================
@@ -1200,6 +1214,28 @@ pub fn SUM(
 ) -> PyResult<Py<PyArray1<f64>>> {
     let result = ta_err!(core::math_operator::sum(input.as_slice()?, timeperiod))?;
     Ok(to_py_array(py, result))
+}
+
+#[pyfunction]
+#[pyo3(signature = (input, timeperiod=30))]
+pub fn MINMAX(
+    py: Python<'_>,
+    input: PyReadonlyArray1<f64>,
+    timeperiod: usize,
+) -> PyResult<(Py<PyArray1<f64>>, Py<PyArray1<f64>>)> {
+    let (min_arr, max_arr) = ta_err!(core::math_operator::minmax(input.as_slice()?, timeperiod))?;
+    Ok((to_py_array(py, min_arr), to_py_array(py, max_arr)))
+}
+
+#[pyfunction]
+#[pyo3(signature = (input, timeperiod=30))]
+pub fn MINMAXINDEX(
+    py: Python<'_>,
+    input: PyReadonlyArray1<f64>,
+    timeperiod: usize,
+) -> PyResult<(Py<PyArray1<f64>>, Py<PyArray1<f64>>)> {
+    let (minidx, maxidx) = ta_err!(core::math_operator::minmaxindex(input.as_slice()?, timeperiod))?;
+    Ok((to_py_array(py, minidx), to_py_array(py, maxidx)))
 }
 
 // ============================================================

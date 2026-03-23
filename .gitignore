@@ -12,6 +12,7 @@ build/
 .eggs/
 *.so
 *.dylib
+*.dSYM/
 *.pyd
 
 # Virtual environments

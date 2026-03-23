@@ -30,6 +30,7 @@ fn _talib(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(func_api::MIDPRICE, m)?)?;
     m.add_function(wrap_pyfunction!(func_api::MAVP, m)?)?;
     m.add_function(wrap_pyfunction!(func_api::HT_TRENDLINE, m)?)?;
+    m.add_function(wrap_pyfunction!(func_api::MA, m)?)?;
 
     // ===== Momentum Indicators =====
     m.add_function(wrap_pyfunction!(func_api::RSI, m)?)?;
@@ -117,6 +118,8 @@ fn _talib(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(func_api::MIN, m)?)?;
     m.add_function(wrap_pyfunction!(func_api::MININDEX, m)?)?;
     m.add_function(wrap_pyfunction!(func_api::SUM, m)?)?;
+    m.add_function(wrap_pyfunction!(func_api::MINMAX, m)?)?;
+    m.add_function(wrap_pyfunction!(func_api::MINMAXINDEX, m)?)?;
 
     // ===== Cycle Indicators =====
     m.add_function(wrap_pyfunction!(func_api::HT_DCPERIOD, m)?)?;

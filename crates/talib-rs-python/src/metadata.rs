@@ -24,6 +24,7 @@ pub fn get_functions() -> Vec<String> {
         "MIDPRICE",
         "MAVP",
         "HT_TRENDLINE",
+        "MA",
     ] {
         funcs.push(name.to_string());
     }
@@ -78,6 +79,7 @@ pub fn get_functions() -> Vec<String> {
     // Math Operators
     for name in &[
         "ADD", "SUB", "MULT", "DIV", "MAX", "MAXINDEX", "MIN", "MININDEX", "SUM",
+        "MINMAX", "MINMAXINDEX",
     ] {
         funcs.push(name.to_string());
     }
@@ -187,6 +189,7 @@ pub fn get_function_groups() -> HashMap<String, Vec<String>> {
             "MIDPRICE",
             "MAVP",
             "HT_TRENDLINE",
+            "MA",
         ]
         .into_iter()
         .map(String::from)
@@ -263,6 +266,7 @@ pub fn get_function_groups() -> HashMap<String, Vec<String>> {
         "Math Operators".to_string(),
         vec![
             "ADD", "SUB", "MULT", "DIV", "MAX", "MAXINDEX", "MIN", "MININDEX", "SUM",
+            "MINMAX", "MINMAXINDEX",
         ]
         .into_iter()
         .map(String::from)

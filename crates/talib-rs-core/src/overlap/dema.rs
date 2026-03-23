@@ -34,7 +34,7 @@ pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     ema1[p] = seed1;
     let mut ema1_prev = seed1;
     for i in timeperiod..len {
-        let val = input[i] * k + ema1_prev * one_minus_k;
+        let val = input[i].mul_add(k, ema1_prev * one_minus_k);
         ema1[i] = val;
         ema1_prev = val;
     }
@@ -54,7 +54,7 @@ pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 
     for i in (lookback + 1)..len {
         let e1 = ema1[i];
-        ema2_prev = e1 * k + ema2_prev * one_minus_k;
+        ema2_prev = e1.mul_add(k, ema2_prev * one_minus_k);
         output[i] = 2.0 * e1 - ema2_prev;
     }
 

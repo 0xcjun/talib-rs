@@ -38,7 +38,7 @@ pub fn trix(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut e1 = seed1;
     let mut sum2 = seed1;
     for i in timeperiod..(2 * p + 1) {
-        e1 = input[i] * k + e1 * one_minus_k;
+        e1 = input[i].mul_add(k, e1 * one_minus_k);
         sum2 += e1;
     }
 
@@ -47,8 +47,8 @@ pub fn trix(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut e2 = seed2;
     let mut sum3 = seed2;
     for i in (2 * p + 1)..(3 * p + 1) {
-        e1 = input[i] * k + e1 * one_minus_k;
-        e2 = e1 * k + e2 * one_minus_k;
+        e1 = input[i].mul_add(k, e1 * one_minus_k);
+        e2 = e1.mul_add(k, e2 * one_minus_k);
         sum3 += e2;
     }
 
@@ -61,7 +61,7 @@ pub fn trix(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let i = 3 * p + 1;
     e1 = input[i] * k + e1 * one_minus_k;
     e2 = e1 * k + e2 * one_minus_k;
-    let e3_cur = e2 * k + e3_prev * one_minus_k;
+    let e3_cur = e2.mul_add(k, e3_prev * one_minus_k);
     if e3_prev != 0.0 {
         output[lookback] = ((e3_cur - e3_prev) / e3_prev) * 100.0;
     }
@@ -69,9 +69,9 @@ pub fn trix(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 
     // Steady state: cascade all 3 EMA layers + ROC
     for i in (lookback + 1)..len {
-        e1 = input[i] * k + e1 * one_minus_k;
-        e2 = e1 * k + e2 * one_minus_k;
-        let e3_cur = e2 * k + e3_prev * one_minus_k;
+        e1 = input[i].mul_add(k, e1 * one_minus_k);
+        e2 = e1.mul_add(k, e2 * one_minus_k);
+        let e3_cur = e2.mul_add(k, e3_prev * one_minus_k);
         if e3_prev != 0.0 {
             output[i] = ((e3_cur - e3_prev) / e3_prev) * 100.0;
         }
@@ -99,7 +99,7 @@ mod tests {
             e1[..p].fill(f64::NAN);
             let seed1: f64 = input[..timeperiod].iter().sum::<f64>() / tp;
             e1[p] = seed1;
-            for i in timeperiod..len { e1[i] = input[i] * k + e1[i-1] * one_minus_k; }
+            for i in timeperiod..len { e1[i] = input[i].mul_add(k, e1[i-1] * one_minus_k); }
             // Filter NaN for EMA2 input
             let e1v: Vec<f64> = e1.iter().copied().filter(|v| !v.is_nan()).collect();
             // EMA2
@@ -107,7 +107,7 @@ mod tests {
             e2[..p].fill(f64::NAN);
             let seed2: f64 = e1v[..timeperiod].iter().sum::<f64>() / tp;
             e2[p] = seed2;
-            for i in timeperiod..e1v.len() { e2[i] = e1v[i] * k + e2[i-1] * one_minus_k; }
+            for i in timeperiod..e1v.len() { e2[i] = e1v[i].mul_add(k, e2[i-1] * one_minus_k); }
             // Filter NaN for EMA3 input
             let e2v: Vec<f64> = e2.iter().copied().filter(|v| !v.is_nan()).collect();
             // EMA3
@@ -115,7 +115,7 @@ mod tests {
             e3[..p].fill(f64::NAN);
             let seed3: f64 = e2v[..timeperiod].iter().sum::<f64>() / tp;
             e3[p] = seed3;
-            for i in timeperiod..e2v.len() { e3[i] = e2v[i] * k + e3[i-1] * one_minus_k; }
+            for i in timeperiod..e2v.len() { e3[i] = e2v[i].mul_add(k, e3[i-1] * one_minus_k); }
             // ROC
             let e3_offset = 2 * p;
             let mut output = vec![0.0_f64; len];

@@ -4,16 +4,14 @@ use crate::error::{TaError, TaResult};
 pub fn avgprice(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> {
     let len = open.len();
     validate_ohlc_len(len, high, low, close)?;
-    let mut output = vec![0.0_f64; len];
-    for ((((&o, &h), &l), &c), out) in open
-        .iter()
-        .zip(high.iter())
-        .zip(low.iter())
-        .zip(close.iter())
-        .zip(output.iter_mut())
-    {
-        *out = (o + h + l + c) * 0.25;
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(
+        open.iter()
+            .zip(high.iter())
+            .zip(low.iter())
+            .zip(close.iter())
+            .map(|(((&o, &h), &l), &c)| (o + h + l + c) * 0.25),
+    );
     Ok(output)
 }
 
@@ -26,10 +24,12 @@ pub fn medprice(high: &[f64], low: &[f64]) -> TaResult<Vec<f64>> {
             got: low.len(),
         });
     }
-    let mut output = vec![0.0_f64; len];
-    for ((&h, &l), out) in high.iter().zip(low.iter()).zip(output.iter_mut()) {
-        *out = (h + l) * 0.5;
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(
+        high.iter()
+            .zip(low.iter())
+            .map(|(&h, &l)| (h + l) * 0.5),
+    );
     Ok(output)
 }
 
@@ -43,15 +43,13 @@ pub fn typprice(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> 
         });
     }
     let one_third = 1.0 / 3.0;
-    let mut output = vec![0.0_f64; len];
-    for (((&h, &l), &c), out) in high
-        .iter()
-        .zip(low.iter())
-        .zip(close.iter())
-        .zip(output.iter_mut())
-    {
-        *out = (h + l + c) * one_third;
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(
+        high.iter()
+            .zip(low.iter())
+            .zip(close.iter())
+            .map(|((&h, &l), &c)| (h + l + c) * one_third),
+    );
     Ok(output)
 }
 
@@ -64,15 +62,13 @@ pub fn wclprice(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> 
             got: low.len().min(close.len()),
         });
     }
-    let mut output = vec![0.0_f64; len];
-    for (((&h, &l), &c), out) in high
-        .iter()
-        .zip(low.iter())
-        .zip(close.iter())
-        .zip(output.iter_mut())
-    {
-        *out = (h + l + c + c) * 0.25;
-    }
+    let mut output = Vec::with_capacity(len);
+    output.extend(
+        high.iter()
+            .zip(low.iter())
+            .zip(close.iter())
+            .map(|((&h, &l), &c)| (h + l + c + c) * 0.25),
+    );
     Ok(output)
 }
 

@@ -62,8 +62,8 @@ pub fn macd(
     let mut slow_ema = slow_seed;
     let mut fast_ema = fast_seed;
     for i in sp..len {
-        slow_ema = input[i] * k_slow + slow_ema * (1.0 - k_slow);
-        fast_ema = input[i] * k_fast + fast_ema * (1.0 - k_fast);
+        slow_ema = input[i].mul_add(k_slow, slow_ema * (1.0 - k_slow));
+        fast_ema = input[i].mul_add(k_fast, fast_ema * (1.0 - k_fast));
         macd_values.push(fast_ema - slow_ema);
     }
 
@@ -90,7 +90,7 @@ pub fn macd(
 
     for i in signalperiod..macd_values.len() {
         let bar = sp - 1 + i;
-        signal_ema = macd_values[i] * k_signal + signal_ema * (1.0 - k_signal);
+        signal_ema = macd_values[i].mul_add(k_signal, signal_ema * (1.0 - k_signal));
         macd_line[bar] = macd_values[i];
         signal_line[bar] = signal_ema;
         histogram[bar] = macd_values[i] - signal_ema;
@@ -191,8 +191,8 @@ pub fn macd_fix(input: &[f64], signalperiod: usize) -> TaResult<(Vec<f64>, Vec<f
     let mut slow_ema = slow_seed;
     let mut fast_ema = fast_seed;
     for i in sp..len {
-        slow_ema = input[i] * k_slow + slow_ema * (1.0 - k_slow);
-        fast_ema = input[i] * k_fast + fast_ema * (1.0 - k_fast);
+        slow_ema = input[i].mul_add(k_slow, slow_ema * (1.0 - k_slow));
+        fast_ema = input[i].mul_add(k_fast, fast_ema * (1.0 - k_fast));
         macd_values.push(fast_ema - slow_ema);
     }
 
@@ -215,7 +215,7 @@ pub fn macd_fix(input: &[f64], signalperiod: usize) -> TaResult<(Vec<f64>, Vec<f
 
     for i in signalperiod..macd_values.len() {
         let bar = sp - 1 + i;
-        sig_ema = macd_values[i] * k_signal + sig_ema * (1.0 - k_signal);
+        sig_ema = macd_values[i].mul_add(k_signal, sig_ema * (1.0 - k_signal));
         macd_line[bar] = macd_values[i];
         signal_line[bar] = sig_ema;
         histogram[bar] = macd_values[i] - sig_ema;

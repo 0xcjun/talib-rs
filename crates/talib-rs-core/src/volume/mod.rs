@@ -83,8 +83,8 @@ pub fn adosc(
             0.0
         };
         ad_val += clv * v;
-        fast_ema = ad_val * fast_k + fast_ema * fast_k1;
-        slow_ema = ad_val * slow_k + slow_ema * slow_k1;
+        fast_ema = ad_val.mul_add(fast_k, fast_ema * fast_k1);
+        slow_ema = ad_val.mul_add(slow_k, slow_ema * slow_k1);
         if i >= lookback {
             output[i] = fast_ema - slow_ema;
         }

@@ -38,7 +38,7 @@ pub fn tema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut e1 = seed1;
     let mut sum2 = seed1;
     for i in timeperiod..(2 * p + 1) {
-        e1 = input[i] * k + e1 * one_minus_k;
+        e1 = input[i].mul_add(k, e1 * one_minus_k);
         sum2 += e1;
     }
 
@@ -47,8 +47,8 @@ pub fn tema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut e2 = seed2;
     let mut sum3 = seed2;
     for i in (2 * p + 1)..(3 * p + 1) {
-        e1 = input[i] * k + e1 * one_minus_k;
-        e2 = e1 * k + e2 * one_minus_k;
+        e1 = input[i].mul_add(k, e1 * one_minus_k);
+        e2 = e1.mul_add(k, e2 * one_minus_k);
         sum3 += e2;
     }
 
@@ -60,9 +60,9 @@ pub fn tema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 
     // Steady state: cascade all 3 EMA layers
     for i in (lookback + 1)..len {
-        e1 = input[i] * k + e1 * one_minus_k;
-        e2 = e1 * k + e2 * one_minus_k;
-        e3 = e2 * k + e3 * one_minus_k;
+        e1 = input[i].mul_add(k, e1 * one_minus_k);
+        e2 = e1.mul_add(k, e2 * one_minus_k);
+        e3 = e2.mul_add(k, e3 * one_minus_k);
         output[i] = 3.0 * e1 - 3.0 * e2 + e3;
     }
 
@@ -94,19 +94,19 @@ mod tests {
             ema1[..p].fill(f64::NAN);
             let seed1: f64 = input[..timeperiod].iter().sum::<f64>() / timeperiod as f64;
             ema1[p] = seed1;
-            for i in timeperiod..len { ema1[i] = input[i] * k + ema1[i-1] * one_minus_k; }
+            for i in timeperiod..len { ema1[i] = input[i].mul_add(k, ema1[i-1] * one_minus_k); }
             let mut ema2 = vec![0.0_f64; len];
             ema2[..(2*p)].fill(f64::NAN);
             let seed2: f64 = ema1[p..(2*p+1)].iter().sum::<f64>() / timeperiod as f64;
             ema2[2*p] = seed2;
-            for i in (2*p+1)..len { ema2[i] = ema1[i] * k + ema2[i-1] * one_minus_k; }
+            for i in (2*p+1)..len { ema2[i] = ema1[i].mul_add(k, ema2[i-1] * one_minus_k); }
             let seed3: f64 = ema2[(2*p)..(3*p+1)].iter().sum::<f64>() / timeperiod as f64;
             let mut output = vec![0.0_f64; len];
             output[..(3*p)].fill(f64::NAN);
             let mut e3 = seed3;
             let lookback = 3 * p;
             output[lookback] = 3.0 * ema1[lookback] - 3.0 * ema2[lookback] + e3;
-            for i in (lookback+1)..len { e3 = ema2[i] * k + e3 * one_minus_k; output[i] = 3.0 * ema1[i] - 3.0 * ema2[i] + e3; }
+            for i in (lookback+1)..len { e3 = ema2[i].mul_add(k, e3 * one_minus_k); output[i] = 3.0 * ema1[i] - 3.0 * ema2[i] + e3; }
             output
         }
         for period in [2, 3, 5, 10] {

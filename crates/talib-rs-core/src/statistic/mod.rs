@@ -1,17 +1,45 @@
 use crate::error::{TaError, TaResult};
 
-/// Standard Deviation (STDDEV) — O(n) 滑动窗口算法
+/// Standard Deviation (STDDEV) — fused single-pass var+sqrt
 ///
-/// 使用 Var(X) = E(X²) - E(X)² 的在线计算:
-/// 维护 sum 和 sum_sq 的滑动窗口，每步 O(1)。
+/// Eliminates intermediate var Vec (8MB at 1M bars) by computing
+/// variance and sqrt in the same loop. One Vec, one pass.
 pub fn stddev(input: &[f64], timeperiod: usize, nbdev: f64) -> TaResult<Vec<f64>> {
-    let var_result = var_internal(input, timeperiod)?;
-    let lookback = timeperiod - 1;
-    let mut output = vec![0.0_f64; input.len()];
-    output[..lookback].fill(f64::NAN);
-    for i in lookback..input.len() {
-        output[i] = var_result[i].max(0.0).sqrt() * nbdev;
+    if timeperiod < 2 {
+        return Err(TaError::InvalidParameter {
+            name: "timeperiod",
+            value: timeperiod.to_string(),
+            reason: "must be >= 2",
+        });
     }
+    let len = input.len();
+    if len < timeperiod {
+        return Err(TaError::InsufficientData { need: timeperiod, got: len });
+    }
+
+    let lookback = timeperiod - 1;
+    let inv_n = 1.0 / timeperiod as f64;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
+
+    let mut sum = 0.0_f64;
+    let mut sum_sq = 0.0_f64;
+    for j in 0..timeperiod {
+        sum += input[j];
+        sum_sq = input[j].mul_add(input[j], sum_sq);
+    }
+    let mean = sum * inv_n;
+    output[lookback] = (sum_sq * inv_n - mean * mean).max(0.0).sqrt() * nbdev;
+
+    for i in timeperiod..len {
+        let old = input[i - timeperiod];
+        let new_val = input[i];
+        sum += new_val - old;
+        sum_sq += (new_val - old).mul_add(new_val + old, 0.0);
+        let mean = sum * inv_n;
+        output[i] = (sum_sq * inv_n - mean * mean).max(0.0).sqrt() * nbdev;
+    }
+
     Ok(output)
 }
 
@@ -40,25 +68,27 @@ fn var_internal(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let lookback = timeperiod - 1;
     let mut output = vec![0.0_f64; len];
     output[..lookback].fill(f64::NAN);
-    let n = timeperiod as f64;
+    let inv_n = 1.0 / timeperiod as f64; // precompute: replace 2 div/iter → 2 mul/iter
 
     // 初始窗口的 sum 和 sum_sq
     let mut sum = 0.0_f64;
     let mut sum_sq = 0.0_f64;
     for j in 0..timeperiod {
         sum += input[j];
-        sum_sq += input[j] * input[j];
+        sum_sq = input[j].mul_add(input[j], sum_sq);
     }
-    // Var = E(X²) - E(X)² = sum_sq/n - (sum/n)²
-    output[lookback] = sum_sq / n - (sum / n) * (sum / n);
+    // Var = E(X²) - E(X)² = sum_sq*inv_n - (sum*inv_n)²
+    let mean = sum * inv_n;
+    output[lookback] = sum_sq * inv_n - mean * mean;
 
-    // O(1) 滑动
+    // O(1) 滑动 — all multiplies, zero divisions
     for i in timeperiod..len {
         let old = input[i - timeperiod];
-        let new = input[i];
-        sum += new - old;
-        sum_sq += new * new - old * old;
-        output[i] = sum_sq / n - (sum / n) * (sum / n);
+        let new_val = input[i];
+        sum += new_val - old;
+        sum_sq += (new_val - old).mul_add(new_val + old, 0.0); // (new²-old²) = (new-old)(new+old)
+        let mean = sum * inv_n;
+        output[i] = sum_sq * inv_n - mean * mean;
     }
 
     Ok(output)

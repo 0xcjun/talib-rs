@@ -4,7 +4,7 @@
       "name": "AD",
       "c_us": 0.9,
       "rs_us": 1.0,
-      "speedup": 0.84
+      "speedup": 0.88
     },
     {
       "name": "ADD",
@@ -16,19 +16,19 @@
       "name": "ADOSC",
       "c_us": 1.8,
       "rs_us": 1.8,
-      "speedup": 1.0
+      "speedup": 0.98
     },
     {
       "name": "ADX(14)",
-      "c_us": 4.1,
+      "c_us": 4.2,
       "rs_us": 4.0,
-      "speedup": 1.03
+      "speedup": 1.04
     },
     {
       "name": "ADXR(14)",
-      "c_us": 4.3,
-      "rs_us": 4.6,
-      "speedup": 0.93
+      "c_us": 4.2,
+      "rs_us": 4.7,
+      "speedup": 0.9
     },
     {
       "name": "APO",
@@ -38,39 +38,39 @@
     },
     {
       "name": "AROON(14)",
-      "c_us": 2.3,
-      "rs_us": 2.9,
-      "speedup": 0.81
+      "c_us": 2.4,
+      "rs_us": 2.8,
+      "speedup": 0.85
     },
     {
       "name": "AROONOSC(14)",
       "c_us": 2.2,
       "rs_us": 2.8,
-      "speedup": 0.81
+      "speedup": 0.82
     },
     {
       "name": "ATR(14)",
       "c_us": 4.0,
       "rs_us": 4.2,
-      "speedup": 0.96
+      "speedup": 0.95
     },
     {
       "name": "AVGPRICE",
       "c_us": 0.3,
-      "rs_us": 0.5,
-      "speedup": 0.61
+      "rs_us": 0.6,
+      "speedup": 0.57
     },
     {
       "name": "BBANDS(20)",
       "c_us": 2.7,
       "rs_us": 1.6,
-      "speedup": 1.71
+      "speedup": 1.67
     },
     {
       "name": "BETA(5)",
       "c_us": 3.2,
       "rs_us": 2.0,
-      "speedup": 1.6
+      "speedup": 1.64
     },
     {
       "name": "BOP",
@@ -81,1151 +81,1151 @@
     {
       "name": "CCI(14)",
       "c_us": 6.6,
-      "rs_us": 5.1,
-      "speedup": 1.28
+      "rs_us": 5.2,
+      "speedup": 1.27
     },
     {
       "name": "CDL3BLACKCROWS",
       "c_us": 2.0,
-      "rs_us": 1.8,
-      "speedup": 1.12
+      "rs_us": 1.6,
+      "speedup": 1.26
     },
     {
       "name": "CDLDOJI",
-      "c_us": 1.0,
-      "rs_us": 1.2,
-      "speedup": 0.86
+      "c_us": 0.9,
+      "rs_us": 1.1,
+      "speedup": 0.85
     },
     {
       "name": "CDLENGULFING",
       "c_us": 1.0,
       "rs_us": 1.2,
-      "speedup": 0.89
+      "speedup": 0.77
     },
     {
       "name": "CDLHAMMER",
-      "c_us": 3.2,
-      "rs_us": 1.5,
-      "speedup": 2.08
+      "c_us": 3.4,
+      "rs_us": 1.6,
+      "speedup": 2.13
     },
     {
       "name": "CDLHIKKAKE",
       "c_us": 1.1,
       "rs_us": 1.5,
-      "speedup": 0.77
+      "speedup": 0.75
     },
     {
       "name": "CDLMORNINGSTAR",
-      "c_us": 2.4,
-      "rs_us": 1.5,
-      "speedup": 1.57
+      "c_us": 2.9,
+      "rs_us": 1.8,
+      "speedup": 1.64
     },
     {
       "name": "CMO(14)",
-      "c_us": 3.8,
-      "rs_us": 3.7,
-      "speedup": 1.02
+      "c_us": 4.5,
+      "rs_us": 4.1,
+      "speedup": 1.09
     },
     {
       "name": "CORREL(30)",
       "c_us": 2.2,
       "rs_us": 2.0,
-      "speedup": 1.06
+      "speedup": 1.08
     },
     {
       "name": "COS",
       "c_us": 2.4,
       "rs_us": 2.4,
-      "speedup": 1.02
+      "speedup": 1.0
     },
     {
       "name": "DEMA(20)",
-      "c_us": 2.8,
-      "rs_us": 2.8,
-      "speedup": 0.97
+      "c_us": 2.7,
+      "rs_us": 2.9,
+      "speedup": 0.93
     },
     {
       "name": "DIV",
-      "c_us": 0.3,
-      "rs_us": 0.3,
-      "speedup": 0.88
+      "c_us": 0.2,
+      "rs_us": 0.4,
+      "speedup": 0.67
     },
     {
       "name": "DX(14)",
       "c_us": 3.9,
-      "rs_us": 4.6,
-      "speedup": 0.85
+      "rs_us": 4.7,
+      "speedup": 0.83
     },
     {
       "name": "EMA(20)",
       "c_us": 1.3,
-      "rs_us": 1.6,
-      "speedup": 0.84
+      "rs_us": 2.1,
+      "speedup": 0.64
     },
     {
       "name": "EXP",
-      "c_us": 1.5,
-      "rs_us": 1.7,
-      "speedup": 0.9
+      "c_us": 1.7,
+      "rs_us": 1.8,
+      "speedup": 0.91
     },
     {
       "name": "HT_DCPERIOD",
-      "c_us": 29.2,
-      "rs_us": 31.4,
-      "speedup": 0.93
+      "c_us": 32.4,
+      "rs_us": 58.9,
+      "speedup": 0.55
     },
     {
       "name": "HT_DCPHASE",
-      "c_us": 151.1,
-      "rs_us": 153.9,
-      "speedup": 0.98
+      "c_us": 253.5,
+      "rs_us": 238.6,
+      "speedup": 1.06
     },
     {
       "name": "HT_PHASOR",
-      "c_us": 29.5,
-      "rs_us": 32.0,
+      "c_us": 45.5,
+      "rs_us": 49.3,
       "speedup": 0.92
     },
     {
       "name": "HT_SINE",
-      "c_us": 160.0,
-      "rs_us": 158.7,
-      "speedup": 1.01
+      "c_us": 211.4,
+      "rs_us": 206.5,
+      "speedup": 1.02
     },
     {
       "name": "HT_TRENDLINE",
-      "c_us": 32.3,
-      "rs_us": 37.2,
-      "speedup": 0.87
+      "c_us": 43.1,
+      "rs_us": 46.5,
+      "speedup": 0.93
     },
     {
       "name": "HT_TRENDMODE",
-      "c_us": 169.1,
-      "rs_us": 177.3,
-      "speedup": 0.95
+      "c_us": 199.7,
+      "rs_us": 207.7,
+      "speedup": 0.96
     },
     {
       "name": "KAMA(30)",
-      "c_us": 1.7,
-      "rs_us": 2.5,
-      "speedup": 0.67
+      "c_us": 1.8,
+      "rs_us": 2.7,
+      "speedup": 0.68
     },
     {
       "name": "LINEARREG(14)",
-      "c_us": 4.6,
-      "rs_us": 2.5,
-      "speedup": 1.86
+      "c_us": 5.1,
+      "rs_us": 2.6,
+      "speedup": 1.98
     },
     {
       "name": "LINEARREG_ANGLE",
-      "c_us": 10.5,
-      "rs_us": 4.8,
+      "c_us": 11.8,
+      "rs_us": 5.4,
       "speedup": 2.18
     },
     {
       "name": "LINEARREG_INTERCEPT",
-      "c_us": 4.3,
-      "rs_us": 1.9,
-      "speedup": 2.26
+      "c_us": 4.8,
+      "rs_us": 2.3,
+      "speedup": 2.07
     },
     {
       "name": "LINEARREG_SLOPE",
-      "c_us": 4.0,
-      "rs_us": 2.1,
-      "speedup": 1.94
+      "c_us": 4.6,
+      "rs_us": 2.3,
+      "speedup": 1.96
     },
     {
       "name": "LN",
-      "c_us": 1.9,
-      "rs_us": 2.1,
-      "speedup": 0.92
+      "c_us": 2.1,
+      "rs_us": 2.3,
+      "speedup": 0.93
     },
     {
       "name": "MA(30,SMA)",
-      "c_us": 1.2,
-      "rs_us": 0.9,
-      "speedup": 1.27
+      "c_us": 1.3,
+      "rs_us": 1.0,
+      "speedup": 1.29
     },
     {
       "name": "MACD",
-      "c_us": 4.7,
-      "rs_us": 3.2,
-      "speedup": 1.45
+      "c_us": 5.1,
+      "rs_us": 3.9,
+      "speedup": 1.31
     },
     {
       "name": "MACDEXT",
-      "c_us": 4.2,
-      "rs_us": 7.1,
-      "speedup": 0.59
-    },
-    {
-      "name": "MACDFIX(9)",
-      "c_us": 4.2,
-      "rs_us": 3.2,
-      "speedup": 1.33
-    },
-    {
-      "name": "MAMA",
-      "c_us": 31.1,
-      "rs_us": 35.7,
-      "speedup": 0.87
-    },
-    {
-      "name": "MAX(30)",
-      "c_us": 1.7,
-      "rs_us": 2.0,
-      "speedup": 0.83
-    },
-    {
-      "name": "MEDPRICE",
-      "c_us": 0.2,
-      "rs_us": 0.4,
-      "speedup": 0.56
-    },
-    {
-      "name": "MFI(14)",
-      "c_us": 1.4,
-      "rs_us": 2.8,
-      "speedup": 0.49
-    },
-    {
-      "name": "MIDPOINT(14)",
-      "c_us": 8.4,
-      "rs_us": 2.4,
-      "speedup": 3.53
-    },
-    {
-      "name": "MIDPRICE(14)",
-      "c_us": 5.5,
-      "rs_us": 2.4,
-      "speedup": 2.26
-    },
-    {
-      "name": "MIN(30)",
-      "c_us": 3.5,
-      "rs_us": 2.9,
-      "speedup": 1.22
-    },
-    {
-      "name": "MINMAX(30)",
-      "c_us": 3.3,
-      "rs_us": 5.0,
-      "speedup": 0.67
-    },
-    {
-      "name": "MINMAXINDEX(30)",
-      "c_us": 4.5,
-      "rs_us": 4.9,
-      "speedup": 0.91
-    },
-    {
-      "name": "MINUS_DI(14)",
-      "c_us": 3.5,
-      "rs_us": 3.8,
-      "speedup": 0.94
-    },
-    {
-      "name": "MINUS_DM(14)",
-      "c_us": 3.7,
-      "rs_us": 3.7,
-      "speedup": 1.0
-    },
-    {
-      "name": "MOM(10)",
-      "c_us": 0.3,
-      "rs_us": 0.5,
-      "speedup": 0.63
-    },
-    {
-      "name": "MULT",
-      "c_us": 0.2,
-      "rs_us": 0.3,
-      "speedup": 0.75
-    },
-    {
-      "name": "NATR(14)",
-      "c_us": 4.0,
-      "rs_us": 4.0,
-      "speedup": 1.01
-    },
-    {
-      "name": "OBV",
-      "c_us": 0.8,
-      "rs_us": 0.9,
-      "speedup": 0.82
-    },
-    {
-      "name": "PLUS_DI(14)",
-      "c_us": 4.2,
-      "rs_us": 3.8,
-      "speedup": 1.13
-    },
-    {
-      "name": "PLUS_DM(14)",
-      "c_us": 3.8,
-      "rs_us": 3.8,
-      "speedup": 1.0
-    },
-    {
-      "name": "PPO",
-      "c_us": 2.4,
-      "rs_us": 2.2,
-      "speedup": 1.12
-    },
-    {
-      "name": "ROC(10)",
-      "c_us": 0.6,
-      "rs_us": 0.8,
-      "speedup": 0.83
-    },
-    {
-      "name": "ROCP(10)",
-      "c_us": 0.6,
-      "rs_us": 0.6,
-      "speedup": 1.0
-    },
-    {
-      "name": "ROCR(10)",
-      "c_us": 0.6,
-      "rs_us": 0.6,
-      "speedup": 1.0
-    },
-    {
-      "name": "ROCR100(10)",
-      "c_us": 0.7,
-      "rs_us": 0.9,
-      "speedup": 0.76
-    },
-    {
-      "name": "RSI(14)",
-      "c_us": 4.3,
-      "rs_us": 4.3,
-      "speedup": 0.99
-    },
-    {
-      "name": "SAR",
-      "c_us": 1.6,
-      "rs_us": 1.8,
-      "speedup": 0.9
-    },
-    {
-      "name": "SAREXT",
-      "c_us": 1.5,
-      "rs_us": 1.9,
-      "speedup": 0.82
-    },
-    {
-      "name": "SIN",
-      "c_us": 2.4,
-      "rs_us": 2.6,
-      "speedup": 0.92
-    },
-    {
-      "name": "SMA(20)",
-      "c_us": 1.2,
-      "rs_us": 0.9,
-      "speedup": 1.33
-    },
-    {
-      "name": "SQRT",
-      "c_us": 0.4,
-      "rs_us": 0.6,
-      "speedup": 0.64
-    },
-    {
-      "name": "STDDEV(20)",
-      "c_us": 1.7,
-      "rs_us": 2.0,
-      "speedup": 0.87
-    },
-    {
-      "name": "STOCH",
-      "c_us": 4.0,
-      "rs_us": 4.1,
-      "speedup": 0.97
-    },
-    {
-      "name": "STOCHF",
-      "c_us": 3.2,
-      "rs_us": 3.8,
-      "speedup": 0.86
-    },
-    {
-      "name": "STOCHRSI(14)",
-      "c_us": 7.2,
-      "rs_us": 8.8,
-      "speedup": 0.82
-    },
-    {
-      "name": "SUB",
-      "c_us": 0.2,
-      "rs_us": 0.3,
-      "speedup": 0.75
-    },
-    {
-      "name": "SUM(30)",
-      "c_us": 1.1,
-      "rs_us": 0.9,
-      "speedup": 1.23
-    },
-    {
-      "name": "T3(5)",
-      "c_us": 1.8,
-      "rs_us": 2.2,
-      "speedup": 0.81
-    },
-    {
-      "name": "TEMA(20)",
-      "c_us": 3.8,
-      "rs_us": 1.7,
-      "speedup": 2.28
-    },
-    {
-      "name": "TRANGE",
-      "c_us": 0.3,
-      "rs_us": 0.5,
-      "speedup": 0.73
-    },
-    {
-      "name": "TRIMA(20)",
-      "c_us": 1.8,
-      "rs_us": 1.3,
-      "speedup": 1.37
-    },
-    {
-      "name": "TRIX(15)",
-      "c_us": 4.1,
-      "rs_us": 2.2,
-      "speedup": 1.9
-    },
-    {
-      "name": "TSF(14)",
-      "c_us": 4.0,
-      "rs_us": 2.2,
-      "speedup": 1.79
-    },
-    {
-      "name": "TYPPRICE",
-      "c_us": 0.3,
-      "rs_us": 0.5,
-      "speedup": 0.54
-    },
-    {
-      "name": "ULTOSC",
-      "c_us": 3.6,
-      "rs_us": 3.4,
-      "speedup": 1.06
-    },
-    {
-      "name": "VAR(20)",
-      "c_us": 1.3,
-      "rs_us": 1.5,
-      "speedup": 0.91
-    },
-    {
-      "name": "WCLPRICE",
-      "c_us": 0.3,
-      "rs_us": 0.5,
-      "speedup": 0.58
-    },
-    {
-      "name": "WILLR(14)",
-      "c_us": 2.5,
-      "rs_us": 2.4,
-      "speedup": 1.03
-    },
-    {
-      "name": "WMA(20)",
-      "c_us": 1.3,
-      "rs_us": 1.4,
-      "speedup": 0.94
-    }
-  ],
-  "10000": [
-    {
-      "name": "AD",
-      "c_us": 8.6,
-      "rs_us": 7.6,
-      "speedup": 1.14
-    },
-    {
-      "name": "ADD",
-      "c_us": 2.3,
-      "rs_us": 2.4,
-      "speedup": 0.97
-    },
-    {
-      "name": "ADOSC",
-      "c_us": 17.0,
-      "rs_us": 15.4,
-      "speedup": 1.1
-    },
-    {
-      "name": "ADX(14)",
-      "c_us": 40.5,
-      "rs_us": 37.6,
-      "speedup": 1.08
-    },
-    {
-      "name": "ADXR(14)",
-      "c_us": 42.2,
-      "rs_us": 44.9,
-      "speedup": 0.94
-    },
-    {
-      "name": "APO",
-      "c_us": 21.1,
-      "rs_us": 20.2,
-      "speedup": 1.04
-    },
-    {
-      "name": "AROON(14)",
-      "c_us": 22.8,
-      "rs_us": 30.7,
-      "speedup": 0.74
-    },
-    {
-      "name": "AROONOSC(14)",
-      "c_us": 23.6,
-      "rs_us": 26.4,
-      "speedup": 0.9
-    },
-    {
-      "name": "ATR(14)",
-      "c_us": 39.9,
-      "rs_us": 41.8,
-      "speedup": 0.96
-    },
-    {
-      "name": "AVGPRICE",
-      "c_us": 3.5,
-      "rs_us": 4.2,
-      "speedup": 0.85
-    },
-    {
-      "name": "BBANDS(20)",
-      "c_us": 34.7,
-      "rs_us": 14.0,
-      "speedup": 2.48
-    },
-    {
-      "name": "BETA(5)",
-      "c_us": 31.0,
-      "rs_us": 19.5,
-      "speedup": 1.59
-    },
-    {
-      "name": "BOP",
-      "c_us": 5.2,
-      "rs_us": 4.2,
-      "speedup": 1.25
-    },
-    {
-      "name": "CCI(14)",
-      "c_us": 67.9,
-      "rs_us": 53.2,
-      "speedup": 1.28
-    },
-    {
-      "name": "CDL3BLACKCROWS",
-      "c_us": 39.0,
-      "rs_us": 43.9,
-      "speedup": 0.89
-    },
-    {
-      "name": "CDLDOJI",
-      "c_us": 9.0,
-      "rs_us": 24.1,
-      "speedup": 0.37
-    },
-    {
-      "name": "CDLENGULFING",
-      "c_us": 9.2,
-      "rs_us": 10.9,
-      "speedup": 0.84
-    },
-    {
-      "name": "CDLHAMMER",
-      "c_us": 34.5,
-      "rs_us": 14.2,
-      "speedup": 2.44
-    },
-    {
-      "name": "CDLHIKKAKE",
-      "c_us": 14.8,
-      "rs_us": 12.8,
-      "speedup": 1.16
-    },
-    {
-      "name": "CDLMORNINGSTAR",
-      "c_us": 36.2,
-      "rs_us": 13.7,
-      "speedup": 2.64
-    },
-    {
-      "name": "CMO(14)",
-      "c_us": 36.7,
-      "rs_us": 35.0,
-      "speedup": 1.05
-    },
-    {
-      "name": "CORREL(30)",
-      "c_us": 20.9,
-      "rs_us": 18.5,
-      "speedup": 1.13
-    },
-    {
-      "name": "COS",
-      "c_us": 26.0,
-      "rs_us": 27.6,
-      "speedup": 0.94
-    },
-    {
-      "name": "DEMA(20)",
-      "c_us": 27.4,
-      "rs_us": 28.1,
-      "speedup": 0.98
-    },
-    {
-      "name": "DIV",
-      "c_us": 2.5,
-      "rs_us": 2.5,
-      "speedup": 0.97
-    },
-    {
-      "name": "DX(14)",
-      "c_us": 37.7,
-      "rs_us": 47.3,
-      "speedup": 0.8
-    },
-    {
-      "name": "EMA(20)",
-      "c_us": 12.4,
-      "rs_us": 13.6,
-      "speedup": 0.91
-    },
-    {
-      "name": "EXP",
-      "c_us": 14.5,
-      "rs_us": 16.1,
-      "speedup": 0.9
-    },
-    {
-      "name": "HT_DCPERIOD",
-      "c_us": 293.2,
-      "rs_us": 319.3,
-      "speedup": 0.92
-    },
-    {
-      "name": "HT_DCPHASE",
-      "c_us": 1505.0,
-      "rs_us": 1589.0,
-      "speedup": 0.95
-    },
-    {
-      "name": "HT_PHASOR",
-      "c_us": 299.3,
-      "rs_us": 325.6,
-      "speedup": 0.92
-    },
-    {
-      "name": "HT_SINE",
-      "c_us": 1626.2,
-      "rs_us": 1628.2,
-      "speedup": 1.0
-    },
-    {
-      "name": "HT_TRENDLINE",
-      "c_us": 354.5,
-      "rs_us": 384.0,
-      "speedup": 0.92
-    },
-    {
-      "name": "HT_TRENDMODE",
-      "c_us": 1768.0,
-      "rs_us": 1838.7,
-      "speedup": 0.96
-    },
-    {
-      "name": "KAMA(30)",
-      "c_us": 15.4,
-      "rs_us": 20.8,
-      "speedup": 0.74
-    },
-    {
-      "name": "LINEARREG(14)",
-      "c_us": 42.5,
-      "rs_us": 22.1,
-      "speedup": 1.93
-    },
-    {
-      "name": "LINEARREG_ANGLE",
-      "c_us": 95.4,
-      "rs_us": 51.0,
-      "speedup": 1.87
-    },
-    {
-      "name": "LINEARREG_INTERCEPT",
-      "c_us": 42.5,
-      "rs_us": 18.3,
-      "speedup": 2.32
-    },
-    {
-      "name": "LINEARREG_SLOPE",
-      "c_us": 45.0,
-      "rs_us": 18.3,
-      "speedup": 2.46
-    },
-    {
-      "name": "LN",
-      "c_us": 18.0,
-      "rs_us": 20.0,
-      "speedup": 0.9
-    },
-    {
-      "name": "MA(30,SMA)",
-      "c_us": 10.6,
-      "rs_us": 6.9,
-      "speedup": 1.53
-    },
-    {
-      "name": "MACD",
-      "c_us": 43.9,
-      "rs_us": 30.7,
-      "speedup": 1.43
-    },
-    {
-      "name": "MACDEXT",
-      "c_us": 42.8,
-      "rs_us": 70.9,
+      "c_us": 5.0,
+      "rs_us": 8.4,
       "speedup": 0.6
     },
     {
       "name": "MACDFIX(9)",
-      "c_us": 43.2,
-      "rs_us": 31.0,
-      "speedup": 1.4
-    },
-    {
-      "name": "MAMA",
-      "c_us": 301.7,
-      "rs_us": 358.2,
-      "speedup": 0.84
-    },
-    {
-      "name": "MAX(30)",
-      "c_us": 20.8,
-      "rs_us": 20.9,
-      "speedup": 1.0
-    },
-    {
-      "name": "MEDPRICE",
-      "c_us": 2.5,
-      "rs_us": 2.7,
-      "speedup": 0.92
-    },
-    {
-      "name": "MFI(14)",
-      "c_us": 13.5,
-      "rs_us": 29.6,
-      "speedup": 0.46
-    },
-    {
-      "name": "MIDPOINT(14)",
-      "c_us": 287.0,
-      "rs_us": 22.4,
-      "speedup": 12.83
-    },
-    {
-      "name": "MIDPRICE(14)",
-      "c_us": 50.0,
-      "rs_us": 21.4,
-      "speedup": 2.33
-    },
-    {
-      "name": "MIN(30)",
-      "c_us": 34.0,
-      "rs_us": 26.2,
-      "speedup": 1.29
-    },
-    {
-      "name": "MINMAX(30)",
-      "c_us": 36.6,
-      "rs_us": 47.3,
-      "speedup": 0.77
-    },
-    {
-      "name": "MINMAXINDEX(30)",
-      "c_us": 44.8,
-      "rs_us": 47.9,
-      "speedup": 0.94
-    },
-    {
-      "name": "MINUS_DI(14)",
-      "c_us": 34.5,
-      "rs_us": 35.3,
-      "speedup": 0.98
-    },
-    {
-      "name": "MINUS_DM(14)",
-      "c_us": 36.7,
-      "rs_us": 35.1,
-      "speedup": 1.05
-    },
-    {
-      "name": "MOM(10)",
-      "c_us": 1.3,
-      "rs_us": 1.9,
-      "speedup": 0.69
-    },
-    {
-      "name": "MULT",
-      "c_us": 2.1,
-      "rs_us": 2.2,
-      "speedup": 0.96
-    },
-    {
-      "name": "NATR(14)",
-      "c_us": 40.0,
-      "rs_us": 37.7,
-      "speedup": 1.06
-    },
-    {
-      "name": "OBV",
-      "c_us": 6.7,
-      "rs_us": 7.3,
-      "speedup": 0.91
-    },
-    {
-      "name": "PLUS_DI(14)",
-      "c_us": 34.5,
-      "rs_us": 35.2,
-      "speedup": 0.98
-    },
-    {
-      "name": "PLUS_DM(14)",
-      "c_us": 36.7,
-      "rs_us": 35.1,
-      "speedup": 1.04
-    },
-    {
-      "name": "PPO",
-      "c_us": 23.7,
-      "rs_us": 21.2,
-      "speedup": 1.12
-    },
-    {
-      "name": "ROC(10)",
-      "c_us": 4.9,
-      "rs_us": 5.5,
-      "speedup": 0.9
-    },
-    {
-      "name": "ROCP(10)",
-      "c_us": 5.1,
-      "rs_us": 4.1,
-      "speedup": 1.23
-    },
-    {
-      "name": "ROCR(10)",
       "c_us": 5.1,
       "rs_us": 3.8,
       "speedup": 1.34
     },
     {
-      "name": "ROCR100(10)",
-      "c_us": 4.8,
-      "rs_us": 5.6,
-      "speedup": 0.86
+      "name": "MAMA",
+      "c_us": 34.8,
+      "rs_us": 42.8,
+      "speedup": 0.81
     },
     {
-      "name": "RSI(14)",
-      "c_us": 38.5,
-      "rs_us": 37.7,
-      "speedup": 1.02
+      "name": "MAX(30)",
+      "c_us": 2.0,
+      "rs_us": 2.4,
+      "speedup": 0.83
     },
     {
-      "name": "SAR",
-      "c_us": 13.4,
-      "rs_us": 15.1,
-      "speedup": 0.88
+      "name": "MEDPRICE",
+      "c_us": 0.3,
+      "rs_us": 0.5,
+      "speedup": 0.67
     },
     {
-      "name": "SAREXT",
-      "c_us": 13.9,
-      "rs_us": 15.5,
+      "name": "MFI(14)",
+      "c_us": 1.6,
+      "rs_us": 3.2,
+      "speedup": 0.5
+    },
+    {
+      "name": "MIDPOINT(14)",
+      "c_us": 9.9,
+      "rs_us": 2.9,
+      "speedup": 3.4
+    },
+    {
+      "name": "MIDPRICE(14)",
+      "c_us": 5.9,
+      "rs_us": 2.5,
+      "speedup": 2.31
+    },
+    {
+      "name": "MIN(30)",
+      "c_us": 4.0,
+      "rs_us": 3.2,
+      "speedup": 1.25
+    },
+    {
+      "name": "MINMAX(30)",
+      "c_us": 4.0,
+      "rs_us": 5.3,
+      "speedup": 0.75
+    },
+    {
+      "name": "MINMAXINDEX(30)",
+      "c_us": 5.0,
+      "rs_us": 5.5,
+      "speedup": 0.91
+    },
+    {
+      "name": "MINUS_DI(14)",
+      "c_us": 4.2,
+      "rs_us": 4.5,
+      "speedup": 0.93
+    },
+    {
+      "name": "MINUS_DM(14)",
+      "c_us": 4.2,
+      "rs_us": 4.4,
+      "speedup": 0.95
+    },
+    {
+      "name": "MOM(10)",
+      "c_us": 0.3,
+      "rs_us": 0.5,
+      "speedup": 0.62
+    },
+    {
+      "name": "MULT",
+      "c_us": 0.3,
+      "rs_us": 0.4,
       "speedup": 0.89
     },
     {
+      "name": "NATR(14)",
+      "c_us": 4.8,
+      "rs_us": 4.7,
+      "speedup": 1.02
+    },
+    {
+      "name": "OBV",
+      "c_us": 0.9,
+      "rs_us": 1.1,
+      "speedup": 0.85
+    },
+    {
+      "name": "PLUS_DI(14)",
+      "c_us": 4.2,
+      "rs_us": 4.4,
+      "speedup": 0.94
+    },
+    {
+      "name": "PLUS_DM(14)",
+      "c_us": 4.2,
+      "rs_us": 4.4,
+      "speedup": 0.96
+    },
+    {
+      "name": "PPO",
+      "c_us": 2.9,
+      "rs_us": 2.5,
+      "speedup": 1.13
+    },
+    {
+      "name": "ROC(10)",
+      "c_us": 0.7,
+      "rs_us": 0.9,
+      "speedup": 0.77
+    },
+    {
+      "name": "ROCP(10)",
+      "c_us": 0.8,
+      "rs_us": 0.7,
+      "speedup": 1.12
+    },
+    {
+      "name": "ROCR(10)",
+      "c_us": 0.8,
+      "rs_us": 0.7,
+      "speedup": 1.06
+    },
+    {
+      "name": "ROCR100(10)",
+      "c_us": 0.7,
+      "rs_us": 0.9,
+      "speedup": 0.77
+    },
+    {
+      "name": "RSI(14)",
+      "c_us": 4.6,
+      "rs_us": 4.7,
+      "speedup": 0.99
+    },
+    {
+      "name": "SAR",
+      "c_us": 1.8,
+      "rs_us": 2.1,
+      "speedup": 0.84
+    },
+    {
+      "name": "SAREXT",
+      "c_us": 1.8,
+      "rs_us": 2.2,
+      "speedup": 0.85
+    },
+    {
       "name": "SIN",
-      "c_us": 28.1,
-      "rs_us": 29.7,
-      "speedup": 0.95
+      "c_us": 3.0,
+      "rs_us": 2.8,
+      "speedup": 1.06
     },
     {
       "name": "SMA(20)",
-      "c_us": 9.6,
-      "rs_us": 6.4,
-      "speedup": 1.5
+      "c_us": 1.2,
+      "rs_us": 1.0,
+      "speedup": 1.3
     },
     {
       "name": "SQRT",
-      "c_us": 2.8,
-      "rs_us": 3.5,
-      "speedup": 0.78
+      "c_us": 0.4,
+      "rs_us": 0.6,
+      "speedup": 0.67
     },
     {
       "name": "STDDEV(20)",
-      "c_us": 14.5,
-      "rs_us": 16.8,
-      "speedup": 0.87
-    },
-    {
-      "name": "STOCH",
-      "c_us": 39.5,
-      "rs_us": 41.4,
-      "speedup": 0.95
-    },
-    {
-      "name": "STOCHF",
-      "c_us": 30.5,
-      "rs_us": 35.1,
-      "speedup": 0.87
-    },
-    {
-      "name": "STOCHRSI(14)",
-      "c_us": 66.9,
-      "rs_us": 81.8,
-      "speedup": 0.82
-    },
-    {
-      "name": "SUB",
-      "c_us": 2.1,
-      "rs_us": 2.5,
+      "c_us": 1.8,
+      "rs_us": 2.1,
       "speedup": 0.86
     },
     {
+      "name": "STOCH",
+      "c_us": 5.7,
+      "rs_us": 4.8,
+      "speedup": 1.19
+    },
+    {
+      "name": "STOCHF",
+      "c_us": 3.5,
+      "rs_us": 4.2,
+      "speedup": 0.83
+    },
+    {
+      "name": "STOCHRSI(14)",
+      "c_us": 7.8,
+      "rs_us": 10.3,
+      "speedup": 0.76
+    },
+    {
+      "name": "SUB",
+      "c_us": 0.3,
+      "rs_us": 0.4,
+      "speedup": 0.89
+    },
+    {
       "name": "SUM(30)",
-      "c_us": 10.2,
-      "rs_us": 7.2,
-      "speedup": 1.41
+      "c_us": 1.3,
+      "rs_us": 1.1,
+      "speedup": 1.19
     },
     {
       "name": "T3(5)",
-      "c_us": 16.7,
-      "rs_us": 20.5,
+      "c_us": 2.2,
+      "rs_us": 2.7,
       "speedup": 0.81
     },
     {
       "name": "TEMA(20)",
-      "c_us": 40.4,
-      "rs_us": 14.9,
-      "speedup": 2.71
+      "c_us": 4.5,
+      "rs_us": 2.0,
+      "speedup": 2.3
     },
     {
       "name": "TRANGE",
-      "c_us": 3.0,
-      "rs_us": 3.7,
-      "speedup": 0.83
+      "c_us": 0.5,
+      "rs_us": 0.7,
+      "speedup": 0.65
     },
     {
       "name": "TRIMA(20)",
-      "c_us": 17.5,
-      "rs_us": 13.0,
-      "speedup": 1.35
+      "c_us": 2.2,
+      "rs_us": 1.7,
+      "speedup": 1.3
     },
     {
       "name": "TRIX(15)",
-      "c_us": 42.0,
-      "rs_us": 20.3,
-      "speedup": 2.06
+      "c_us": 4.8,
+      "rs_us": 2.6,
+      "speedup": 1.87
     },
     {
       "name": "TSF(14)",
-      "c_us": 45.0,
-      "rs_us": 21.9,
-      "speedup": 2.06
+      "c_us": 5.0,
+      "rs_us": 2.5,
+      "speedup": 1.98
     },
     {
       "name": "TYPPRICE",
-      "c_us": 2.9,
-      "rs_us": 3.5,
-      "speedup": 0.82
+      "c_us": 0.4,
+      "rs_us": 0.6,
+      "speedup": 0.64
     },
     {
       "name": "ULTOSC",
-      "c_us": 37.8,
-      "rs_us": 34.8,
-      "speedup": 1.09
+      "c_us": 4.2,
+      "rs_us": 4.1,
+      "speedup": 1.01
     },
     {
       "name": "VAR(20)",
-      "c_us": 12.2,
-      "rs_us": 13.0,
+      "c_us": 1.6,
+      "rs_us": 1.8,
+      "speedup": 0.9
+    },
+    {
+      "name": "WCLPRICE",
+      "c_us": 0.3,
+      "rs_us": 0.5,
+      "speedup": 0.61
+    },
+    {
+      "name": "WILLR(14)",
+      "c_us": 3.0,
+      "rs_us": 2.8,
+      "speedup": 1.04
+    },
+    {
+      "name": "WMA(20)",
+      "c_us": 1.5,
+      "rs_us": 1.7,
       "speedup": 0.93
+    }
+  ],
+  "10000": [
+    {
+      "name": "AD",
+      "c_us": 9.2,
+      "rs_us": 8.9,
+      "speedup": 1.04
+    },
+    {
+      "name": "ADD",
+      "c_us": 2.8,
+      "rs_us": 2.9,
+      "speedup": 0.97
+    },
+    {
+      "name": "ADOSC",
+      "c_us": 19.8,
+      "rs_us": 17.8,
+      "speedup": 1.11
+    },
+    {
+      "name": "ADX(14)",
+      "c_us": 46.3,
+      "rs_us": 43.1,
+      "speedup": 1.08
+    },
+    {
+      "name": "ADXR(14)",
+      "c_us": 47.5,
+      "rs_us": 51.2,
+      "speedup": 0.93
+    },
+    {
+      "name": "APO",
+      "c_us": 23.5,
+      "rs_us": 23.1,
+      "speedup": 1.01
+    },
+    {
+      "name": "AROON(14)",
+      "c_us": 25.3,
+      "rs_us": 34.1,
+      "speedup": 0.74
+    },
+    {
+      "name": "AROONOSC(14)",
+      "c_us": 23.2,
+      "rs_us": 29.0,
+      "speedup": 0.8
+    },
+    {
+      "name": "ATR(14)",
+      "c_us": 43.8,
+      "rs_us": 45.2,
+      "speedup": 0.97
+    },
+    {
+      "name": "AVGPRICE",
+      "c_us": 4.0,
+      "rs_us": 4.8,
+      "speedup": 0.83
+    },
+    {
+      "name": "BBANDS(20)",
+      "c_us": 39.0,
+      "rs_us": 16.1,
+      "speedup": 2.42
+    },
+    {
+      "name": "BETA(5)",
+      "c_us": 33.7,
+      "rs_us": 21.2,
+      "speedup": 1.59
+    },
+    {
+      "name": "BOP",
+      "c_us": 5.8,
+      "rs_us": 4.7,
+      "speedup": 1.24
+    },
+    {
+      "name": "CCI(14)",
+      "c_us": 66.2,
+      "rs_us": 52.9,
+      "speedup": 1.25
+    },
+    {
+      "name": "CDL3BLACKCROWS",
+      "c_us": 38.8,
+      "rs_us": 44.6,
+      "speedup": 0.87
+    },
+    {
+      "name": "CDLDOJI",
+      "c_us": 9.0,
+      "rs_us": 24.9,
+      "speedup": 0.36
+    },
+    {
+      "name": "CDLENGULFING",
+      "c_us": 10.3,
+      "rs_us": 11.0,
+      "speedup": 0.94
+    },
+    {
+      "name": "CDLHAMMER",
+      "c_us": 32.1,
+      "rs_us": 13.1,
+      "speedup": 2.46
+    },
+    {
+      "name": "CDLHIKKAKE",
+      "c_us": 14.4,
+      "rs_us": 12.9,
+      "speedup": 1.12
+    },
+    {
+      "name": "CDLMORNINGSTAR",
+      "c_us": 34.0,
+      "rs_us": 13.8,
+      "speedup": 2.47
+    },
+    {
+      "name": "CMO(14)",
+      "c_us": 39.1,
+      "rs_us": 35.2,
+      "speedup": 1.11
+    },
+    {
+      "name": "CORREL(30)",
+      "c_us": 21.0,
+      "rs_us": 18.7,
+      "speedup": 1.12
+    },
+    {
+      "name": "COS",
+      "c_us": 29.5,
+      "rs_us": 30.5,
+      "speedup": 0.96
+    },
+    {
+      "name": "DEMA(20)",
+      "c_us": 27.6,
+      "rs_us": 28.2,
+      "speedup": 0.98
+    },
+    {
+      "name": "DIV",
+      "c_us": 2.5,
+      "rs_us": 2.3,
+      "speedup": 1.05
+    },
+    {
+      "name": "DX(14)",
+      "c_us": 38.1,
+      "rs_us": 47.5,
+      "speedup": 0.8
+    },
+    {
+      "name": "EMA(20)",
+      "c_us": 12.6,
+      "rs_us": 13.8,
+      "speedup": 0.92
+    },
+    {
+      "name": "EXP",
+      "c_us": 14.4,
+      "rs_us": 15.9,
+      "speedup": 0.91
+    },
+    {
+      "name": "HT_DCPERIOD",
+      "c_us": 290.1,
+      "rs_us": 319.4,
+      "speedup": 0.91
+    },
+    {
+      "name": "HT_DCPHASE",
+      "c_us": 1429.0,
+      "rs_us": 1546.8,
+      "speedup": 0.92
+    },
+    {
+      "name": "HT_PHASOR",
+      "c_us": 299.5,
+      "rs_us": 325.5,
+      "speedup": 0.92
+    },
+    {
+      "name": "HT_SINE",
+      "c_us": 1561.8,
+      "rs_us": 1548.9,
+      "speedup": 1.01
+    },
+    {
+      "name": "HT_TRENDLINE",
+      "c_us": 354.6,
+      "rs_us": 383.0,
+      "speedup": 0.93
+    },
+    {
+      "name": "HT_TRENDMODE",
+      "c_us": 1738.4,
+      "rs_us": 1784.8,
+      "speedup": 0.97
+    },
+    {
+      "name": "KAMA(30)",
+      "c_us": 14.2,
+      "rs_us": 21.0,
+      "speedup": 0.68
+    },
+    {
+      "name": "LINEARREG(14)",
+      "c_us": 39.2,
+      "rs_us": 22.2,
+      "speedup": 1.77
+    },
+    {
+      "name": "LINEARREG_ANGLE",
+      "c_us": 92.8,
+      "rs_us": 50.1,
+      "speedup": 1.85
+    },
+    {
+      "name": "LINEARREG_INTERCEPT",
+      "c_us": 39.1,
+      "rs_us": 18.2,
+      "speedup": 2.14
+    },
+    {
+      "name": "LINEARREG_SLOPE",
+      "c_us": 39.1,
+      "rs_us": 18.4,
+      "speedup": 2.13
+    },
+    {
+      "name": "LN",
+      "c_us": 16.5,
+      "rs_us": 18.0,
+      "speedup": 0.92
+    },
+    {
+      "name": "MA(30,SMA)",
+      "c_us": 9.7,
+      "rs_us": 6.3,
+      "speedup": 1.53
+    },
+    {
+      "name": "MACD",
+      "c_us": 43.3,
+      "rs_us": 31.0,
+      "speedup": 1.4
+    },
+    {
+      "name": "MACDEXT",
+      "c_us": 42.8,
+      "rs_us": 69.4,
+      "speedup": 0.62
+    },
+    {
+      "name": "MACDFIX(9)",
+      "c_us": 43.4,
+      "rs_us": 30.8,
+      "speedup": 1.41
+    },
+    {
+      "name": "MAMA",
+      "c_us": 300.8,
+      "rs_us": 360.4,
+      "speedup": 0.83
+    },
+    {
+      "name": "MAX(30)",
+      "c_us": 19.5,
+      "rs_us": 21.0,
+      "speedup": 0.93
+    },
+    {
+      "name": "MEDPRICE",
+      "c_us": 2.5,
+      "rs_us": 3.1,
+      "speedup": 0.8
+    },
+    {
+      "name": "MFI(14)",
+      "c_us": 13.0,
+      "rs_us": 27.8,
+      "speedup": 0.47
+    },
+    {
+      "name": "MIDPOINT(14)",
+      "c_us": 311.2,
+      "rs_us": 30.8,
+      "speedup": 10.12
+    },
+    {
+      "name": "MIDPRICE(14)",
+      "c_us": 49.5,
+      "rs_us": 20.8,
+      "speedup": 2.37
+    },
+    {
+      "name": "MIN(30)",
+      "c_us": 34.8,
+      "rs_us": 25.9,
+      "speedup": 1.34
+    },
+    {
+      "name": "MINMAX(30)",
+      "c_us": 35.6,
+      "rs_us": 47.8,
+      "speedup": 0.74
+    },
+    {
+      "name": "MINMAXINDEX(30)",
+      "c_us": 44.8,
+      "rs_us": 48.4,
+      "speedup": 0.93
+    },
+    {
+      "name": "MINUS_DI(14)",
+      "c_us": 34.7,
+      "rs_us": 35.6,
+      "speedup": 0.98
+    },
+    {
+      "name": "MINUS_DM(14)",
+      "c_us": 36.9,
+      "rs_us": 35.4,
+      "speedup": 1.04
+    },
+    {
+      "name": "MOM(10)",
+      "c_us": 1.5,
+      "rs_us": 2.1,
+      "speedup": 0.71
+    },
+    {
+      "name": "MULT",
+      "c_us": 2.4,
+      "rs_us": 2.5,
+      "speedup": 0.97
+    },
+    {
+      "name": "NATR(14)",
+      "c_us": 40.2,
+      "rs_us": 38.0,
+      "speedup": 1.06
+    },
+    {
+      "name": "OBV",
+      "c_us": 6.9,
+      "rs_us": 7.6,
+      "speedup": 0.91
+    },
+    {
+      "name": "PLUS_DI(14)",
+      "c_us": 41.5,
+      "rs_us": 35.6,
+      "speedup": 1.17
+    },
+    {
+      "name": "PLUS_DM(14)",
+      "c_us": 34.9,
+      "rs_us": 35.4,
+      "speedup": 0.98
+    },
+    {
+      "name": "PPO",
+      "c_us": 23.9,
+      "rs_us": 21.8,
+      "speedup": 1.1
+    },
+    {
+      "name": "ROC(10)",
+      "c_us": 5.1,
+      "rs_us": 5.7,
+      "speedup": 0.9
+    },
+    {
+      "name": "ROCP(10)",
+      "c_us": 5.2,
+      "rs_us": 4.3,
+      "speedup": 1.21
+    },
+    {
+      "name": "ROCR(10)",
+      "c_us": 5.2,
+      "rs_us": 4.0,
+      "speedup": 1.3
+    },
+    {
+      "name": "ROCR100(10)",
+      "c_us": 5.0,
+      "rs_us": 5.9,
+      "speedup": 0.85
+    },
+    {
+      "name": "RSI(14)",
+      "c_us": 38.7,
+      "rs_us": 38.0,
+      "speedup": 1.02
+    },
+    {
+      "name": "SAR",
+      "c_us": 13.7,
+      "rs_us": 15.0,
+      "speedup": 0.91
+    },
+    {
+      "name": "SAREXT",
+      "c_us": 13.9,
+      "rs_us": 16.1,
+      "speedup": 0.86
+    },
+    {
+      "name": "SIN",
+      "c_us": 33.4,
+      "rs_us": 25.0,
+      "speedup": 1.34
+    },
+    {
+      "name": "SMA(20)",
+      "c_us": 9.8,
+      "rs_us": 6.6,
+      "speedup": 1.47
+    },
+    {
+      "name": "SQRT",
+      "c_us": 2.9,
+      "rs_us": 3.9,
+      "speedup": 0.75
+    },
+    {
+      "name": "STDDEV(20)",
+      "c_us": 14.7,
+      "rs_us": 16.9,
+      "speedup": 0.87
+    },
+    {
+      "name": "STOCH",
+      "c_us": 38.5,
+      "rs_us": 38.3,
+      "speedup": 1.01
+    },
+    {
+      "name": "STOCHF",
+      "c_us": 28.2,
+      "rs_us": 39.8,
+      "speedup": 0.71
+    },
+    {
+      "name": "STOCHRSI(14)",
+      "c_us": 67.2,
+      "rs_us": 80.1,
+      "speedup": 0.84
+    },
+    {
+      "name": "SUB",
+      "c_us": 2.3,
+      "rs_us": 2.4,
+      "speedup": 0.95
+    },
+    {
+      "name": "SUM(30)",
+      "c_us": 10.4,
+      "rs_us": 7.4,
+      "speedup": 1.41
+    },
+    {
+      "name": "T3(5)",
+      "c_us": 16.8,
+      "rs_us": 20.8,
+      "speedup": 0.81
+    },
+    {
+      "name": "TEMA(20)",
+      "c_us": 40.5,
+      "rs_us": 15.0,
+      "speedup": 2.7
+    },
+    {
+      "name": "TRANGE",
+      "c_us": 3.2,
+      "rs_us": 3.9,
+      "speedup": 0.82
+    },
+    {
+      "name": "TRIMA(20)",
+      "c_us": 17.7,
+      "rs_us": 13.2,
+      "speedup": 1.34
+    },
+    {
+      "name": "TRIX(15)",
+      "c_us": 42.1,
+      "rs_us": 20.5,
+      "speedup": 2.05
+    },
+    {
+      "name": "TSF(14)",
+      "c_us": 39.2,
+      "rs_us": 22.1,
+      "speedup": 1.77
+    },
+    {
+      "name": "TYPPRICE",
+      "c_us": 3.1,
+      "rs_us": 3.8,
+      "speedup": 0.83
+    },
+    {
+      "name": "ULTOSC",
+      "c_us": 35.0,
+      "rs_us": 35.7,
+      "speedup": 0.98
+    },
+    {
+      "name": "VAR(20)",
+      "c_us": 12.3,
+      "rs_us": 13.3,
+      "speedup": 0.92
     },
     {
       "name": "WCLPRICE",
       "c_us": 3.0,
-      "rs_us": 3.9,
-      "speedup": 0.76
+      "rs_us": 3.6,
+      "speedup": 0.84
     },
     {
       "name": "WILLR(14)",
-      "c_us": 27.1,
-      "rs_us": 28.5,
-      "speedup": 0.95
+      "c_us": 24.5,
+      "rs_us": 25.5,
+      "speedup": 0.96
     },
     {
       "name": "WMA(20)",
       "c_us": 12.2,
-      "rs_us": 12.3,
-      "speedup": 0.99
+      "rs_us": 12.4,
+      "speedup": 0.98
     }
   ],
   "100000": [
     {
       "name": "AD",
-      "c_us": 81.2,
-      "rs_us": 74.2,
-      "speedup": 1.09
+      "c_us": 74.4,
+      "rs_us": 67.7,
+      "speedup": 1.1
     },
     {
       "name": "ADD",
-      "c_us": 20.5,
-      "rs_us": 20.6,
-      "speedup": 1.0
+      "c_us": 18.5,
+      "rs_us": 18.7,
+      "speedup": 0.99
     },
     {
       "name": "ADOSC",
-      "c_us": 168.5,
-      "rs_us": 157.5,
-      "speedup": 1.07
+      "c_us": 165.8,
+      "rs_us": 145.3,
+      "speedup": 1.14
     },
     {
       "name": "ADX(14)",
-      "c_us": 545.3,
-      "rs_us": 369.2,
-      "speedup": 1.48
+      "c_us": 520.7,
+      "rs_us": 371.3,
+      "speedup": 1.4
     },
     {
       "name": "ADXR(14)",
-      "c_us": 557.7,
-      "rs_us": 431.9,
-      "speedup": 1.29
+      "c_us": 529.0,
+      "rs_us": 431.0,
+      "speedup": 1.23
     },
     {
       "name": "APO",
       "c_us": 200.9,
-      "rs_us": 178.2,
+      "rs_us": 178.3,
       "speedup": 1.13
     },
     {
       "name": "AROON(14)",
-      "c_us": 357.3,
-      "rs_us": 452.2,
-      "speedup": 0.79
+      "c_us": 364.5,
+      "rs_us": 411.8,
+      "speedup": 0.88
     },
     {
       "name": "AROONOSC(14)",
-      "c_us": 359.1,
-      "rs_us": 405.5,
-      "speedup": 0.89
+      "c_us": 361.5,
+      "rs_us": 400.1,
+      "speedup": 0.9
     },
     {
       "name": "ATR(14)",
-      "c_us": 388.5,
-      "rs_us": 396.5,
+      "c_us": 388.4,
+      "rs_us": 397.5,
       "speedup": 0.98
     },
     {
       "name": "AVGPRICE",
       "c_us": 30.8,
-      "rs_us": 34.3,
+      "rs_us": 34.4,
       "speedup": 0.9
     },
     {
       "name": "BBANDS(20)",
-      "c_us": 349.8,
-      "rs_us": 121.2,
-      "speedup": 2.89
+      "c_us": 351.0,
+      "rs_us": 109.6,
+      "speedup": 3.2
     },
     {
       "name": "BETA(5)",
-      "c_us": 307.2,
-      "rs_us": 166.9,
-      "speedup": 1.84
+      "c_us": 306.0,
+      "rs_us": 165.0,
+      "speedup": 1.85
     },
     {
       "name": "BOP",
-      "c_us": 53.2,
-      "rs_us": 37.0,
-      "speedup": 1.44
+      "c_us": 53.5,
+      "rs_us": 37.5,
+      "speedup": 1.43
     },
     {
       "name": "CCI(14)",
-      "c_us": 674.2,
-      "rs_us": 510.3,
-      "speedup": 1.32
+      "c_us": 673.8,
+      "rs_us": 487.1,
+      "speedup": 1.38
     },
     {
       "name": "CDL3BLACKCROWS",
-      "c_us": 529.7,
-      "rs_us": 599.8,
-      "speedup": 0.88
+      "c_us": 506.8,
+      "rs_us": 581.2,
+      "speedup": 0.87
     },
     {
       "name": "CDLDOJI",
-      "c_us": 86.2,
-      "rs_us": 399.0,
-      "speedup": 0.22
+      "c_us": 80.0,
+      "rs_us": 387.2,
+      "speedup": 0.21
     },
     {
       "name": "CDLENGULFING",
-      "c_us": 279.9,
-      "rs_us": 294.2,
-      "speedup": 0.95
+      "c_us": 306.5,
+      "rs_us": 337.9,
+      "speedup": 0.91
     },
     {
       "name": "CDLHAMMER",
-      "c_us": 1030.9,
-      "rs_us": 514.4,
-      "speedup": 2.0
+      "c_us": 910.7,
+      "rs_us": 525.5,
+      "speedup": 1.73
     },
     {
       "name": "CDLHIKKAKE",
-      "c_us": 298.0,
-      "rs_us": 299.6,
-      "speedup": 0.99
+      "c_us": 296.5,
+      "rs_us": 309.0,
+      "speedup": 0.96
     },
     {
       "name": "CDLMORNINGSTAR",
-      "c_us": 512.6,
-      "rs_us": 332.1,
-      "speedup": 1.54
+      "c_us": 479.9,
+      "rs_us": 320.5,
+      "speedup": 1.5
     },
     {
       "name": "CMO(14)",
-      "c_us": 362.9,
-      "rs_us": 344.7,
+      "c_us": 363.0,
+      "rs_us": 344.8,
       "speedup": 1.05
     },
     {
       "name": "CORREL(30)",
       "c_us": 204.2,
-      "rs_us": 181.8,
-      "speedup": 1.12
+      "rs_us": 179.3,
+      "speedup": 1.14
     },
     {
       "name": "COS",
-      "c_us": 602.2,
-      "rs_us": 615.6,
-      "speedup": 0.98
+      "c_us": 612.2,
+      "rs_us": 610.0,
+      "speedup": 1.0
     },
     {
       "name": "DEMA(20)",
-      "c_us": 262.9,
-      "rs_us": 263.9,
+      "c_us": 263.2,
+      "rs_us": 264.2,
       "speedup": 1.0
     },
     {
@@ -1236,934 +1236,934 @@
     },
     {
       "name": "DX(14)",
-      "c_us": 550.2,
-      "rs_us": 464.0,
-      "speedup": 1.19
+      "c_us": 527.4,
+      "rs_us": 461.7,
+      "speedup": 1.14
     },
     {
       "name": "EMA(20)",
-      "c_us": 119.6,
-      "rs_us": 129.1,
+      "c_us": 119.7,
+      "rs_us": 129.2,
       "speedup": 0.93
     },
     {
       "name": "EXP",
-      "c_us": 149.8,
-      "rs_us": 157.7,
-      "speedup": 0.95
+      "c_us": 141.5,
+      "rs_us": 155.0,
+      "speedup": 0.91
     },
     {
       "name": "HT_DCPERIOD",
-      "c_us": 2940.1,
-      "rs_us": 3202.8,
+      "c_us": 2942.3,
+      "rs_us": 3202.7,
       "speedup": 0.92
     },
     {
       "name": "HT_DCPHASE",
-      "c_us": 15157.0,
-      "rs_us": 15817.6,
+      "c_us": 14603.1,
+      "rs_us": 15183.0,
       "speedup": 0.96
     },
     {
       "name": "HT_PHASOR",
-      "c_us": 2998.1,
-      "rs_us": 3251.8,
+      "c_us": 3008.0,
+      "rs_us": 3252.0,
       "speedup": 0.92
     },
     {
       "name": "HT_SINE",
-      "c_us": 16527.7,
-      "rs_us": 16398.0,
-      "speedup": 1.01
+      "c_us": 16209.0,
+      "rs_us": 15751.0,
+      "speedup": 1.03
     },
     {
       "name": "HT_TRENDLINE",
-      "c_us": 3697.1,
-      "rs_us": 3952.5,
+      "c_us": 3710.0,
+      "rs_us": 3928.3,
       "speedup": 0.94
     },
     {
       "name": "HT_TRENDMODE",
-      "c_us": 17726.4,
-      "rs_us": 18791.8,
-      "speedup": 0.94
+      "c_us": 17314.3,
+      "rs_us": 18199.6,
+      "speedup": 0.95
     },
     {
       "name": "KAMA(30)",
-      "c_us": 143.6,
-      "rs_us": 203.5,
-      "speedup": 0.71
+      "c_us": 134.9,
+      "rs_us": 203.8,
+      "speedup": 0.66
     },
     {
       "name": "LINEARREG(14)",
-      "c_us": 403.4,
-      "rs_us": 189.5,
-      "speedup": 2.13
+      "c_us": 386.5,
+      "rs_us": 190.2,
+      "speedup": 2.03
     },
     {
       "name": "LINEARREG_ANGLE",
-      "c_us": 816.6,
-      "rs_us": 468.6,
-      "speedup": 1.74
+      "c_us": 773.9,
+      "rs_us": 449.5,
+      "speedup": 1.72
     },
     {
       "name": "LINEARREG_INTERCEPT",
-      "c_us": 411.8,
-      "rs_us": 161.5,
-      "speedup": 2.55
+      "c_us": 401.2,
+      "rs_us": 161.6,
+      "speedup": 2.48
     },
     {
       "name": "LINEARREG_SLOPE",
-      "c_us": 413.2,
+      "c_us": 392.8,
       "rs_us": 161.5,
-      "speedup": 2.56
+      "speedup": 2.43
     },
     {
       "name": "LN",
-      "c_us": 174.2,
-      "rs_us": 181.5,
-      "speedup": 0.96
+      "c_us": 171.5,
+      "rs_us": 165.7,
+      "speedup": 1.04
     },
     {
       "name": "MA(30,SMA)",
-      "c_us": 97.1,
-      "rs_us": 60.0,
-      "speedup": 1.62
+      "c_us": 90.2,
+      "rs_us": 54.8,
+      "speedup": 1.65
     },
     {
       "name": "MACD",
-      "c_us": 407.0,
-      "rs_us": 278.8,
+      "c_us": 406.7,
+      "rs_us": 279.2,
       "speedup": 1.46
     },
     {
       "name": "MACDEXT",
-      "c_us": 403.6,
-      "rs_us": 635.7,
-      "speedup": 0.63
+      "c_us": 403.3,
+      "rs_us": 630.8,
+      "speedup": 0.64
     },
     {
       "name": "MACDFIX(9)",
-      "c_us": 410.2,
-      "rs_us": 280.4,
-      "speedup": 1.46
+      "c_us": 410.6,
+      "rs_us": 279.9,
+      "speedup": 1.47
     },
     {
       "name": "MAMA",
-      "c_us": 3944.1,
-      "rs_us": 3989.2,
-      "speedup": 0.99
+      "c_us": 3821.0,
+      "rs_us": 3901.8,
+      "speedup": 0.98
     },
     {
       "name": "MAX(30)",
-      "c_us": 201.9,
-      "rs_us": 211.4,
-      "speedup": 0.96
+      "c_us": 200.0,
+      "rs_us": 210.9,
+      "speedup": 0.95
     },
     {
       "name": "MEDPRICE",
       "c_us": 18.9,
-      "rs_us": 24.2,
-      "speedup": 0.78
+      "rs_us": 22.2,
+      "speedup": 0.85
     },
     {
       "name": "MFI(14)",
-      "c_us": 561.1,
-      "rs_us": 456.1,
-      "speedup": 1.23
+      "c_us": 526.6,
+      "rs_us": 342.2,
+      "speedup": 1.54
     },
     {
       "name": "MIDPOINT(14)",
-      "c_us": 3902.0,
-      "rs_us": 381.9,
-      "speedup": 10.22
+      "c_us": 3914.6,
+      "rs_us": 388.2,
+      "speedup": 10.08
     },
     {
       "name": "MIDPRICE(14)",
-      "c_us": 511.2,
-      "rs_us": 366.1,
-      "speedup": 1.4
+      "c_us": 491.2,
+      "rs_us": 339.1,
+      "speedup": 1.45
     },
     {
       "name": "MIN(30)",
-      "c_us": 393.7,
-      "rs_us": 276.3,
-      "speedup": 1.42
+      "c_us": 377.0,
+      "rs_us": 271.7,
+      "speedup": 1.39
     },
     {
       "name": "MINMAX(30)",
-      "c_us": 416.5,
-      "rs_us": 534.4,
-      "speedup": 0.78
+      "c_us": 402.7,
+      "rs_us": 521.0,
+      "speedup": 0.77
     },
     {
       "name": "MINMAXINDEX(30)",
-      "c_us": 525.2,
-      "rs_us": 542.2,
-      "speedup": 0.97
+      "c_us": 493.5,
+      "rs_us": 527.3,
+      "speedup": 0.94
     },
     {
       "name": "MINUS_DI(14)",
-      "c_us": 336.7,
-      "rs_us": 341.3,
+      "c_us": 340.4,
+      "rs_us": 345.2,
       "speedup": 0.99
     },
     {
       "name": "MINUS_DM(14)",
       "c_us": 362.9,
-      "rs_us": 345.4,
+      "rs_us": 347.0,
       "speedup": 1.05
     },
     {
       "name": "MOM(10)",
       "c_us": 12.8,
-      "rs_us": 16.9,
-      "speedup": 0.76
+      "rs_us": 17.8,
+      "speedup": 0.72
     },
     {
       "name": "MULT",
-      "c_us": 18.6,
+      "c_us": 18.5,
       "rs_us": 18.6,
       "speedup": 1.0
     },
     {
       "name": "NATR(14)",
-      "c_us": 391.0,
-      "rs_us": 369.7,
-      "speedup": 1.06
+      "c_us": 390.9,
+      "rs_us": 372.1,
+      "speedup": 1.05
     },
     {
       "name": "OBV",
-      "c_us": 273.9,
-      "rs_us": 291.5,
-      "speedup": 0.94
+      "c_us": 271.1,
+      "rs_us": 283.1,
+      "speedup": 0.96
     },
     {
       "name": "PLUS_DI(14)",
-      "c_us": 408.3,
-      "rs_us": 345.2,
-      "speedup": 1.18
+      "c_us": 343.0,
+      "rs_us": 345.3,
+      "speedup": 0.99
     },
     {
       "name": "PLUS_DM(14)",
-      "c_us": 362.8,
-      "rs_us": 344.2,
+      "c_us": 362.9,
+      "rs_us": 345.2,
       "speedup": 1.05
     },
     {
       "name": "PPO",
-      "c_us": 227.7,
-      "rs_us": 191.8,
-      "speedup": 1.19
+      "c_us": 227.6,
+      "rs_us": 189.9,
+      "speedup": 1.2
     },
     {
       "name": "ROC(10)",
-      "c_us": 47.3,
-      "rs_us": 49.7,
+      "c_us": 44.6,
+      "rs_us": 47.0,
       "speedup": 0.95
     },
     {
       "name": "ROCP(10)",
-      "c_us": 46.8,
-      "rs_us": 37.0,
-      "speedup": 1.26
+      "c_us": 46.2,
+      "rs_us": 33.9,
+      "speedup": 1.36
     },
     {
       "name": "ROCR(10)",
-      "c_us": 50.5,
-      "rs_us": 33.8,
-      "speedup": 1.5
+      "c_us": 46.2,
+      "rs_us": 33.7,
+      "speedup": 1.37
     },
     {
       "name": "ROCR100(10)",
-      "c_us": 47.9,
-      "rs_us": 52.2,
-      "speedup": 0.92
+      "c_us": 43.9,
+      "rs_us": 49.5,
+      "speedup": 0.89
     },
     {
       "name": "RSI(14)",
       "c_us": 381.0,
-      "rs_us": 373.5,
+      "rs_us": 372.2,
       "speedup": 1.02
     },
     {
       "name": "SAR",
-      "c_us": 222.3,
-      "rs_us": 344.2,
-      "speedup": 0.65
+      "c_us": 223.0,
+      "rs_us": 332.3,
+      "speedup": 0.67
     },
     {
       "name": "SAREXT",
-      "c_us": 257.0,
-      "rs_us": 232.7,
-      "speedup": 1.1
+      "c_us": 238.0,
+      "rs_us": 300.9,
+      "speedup": 0.79
     },
     {
       "name": "SIN",
-      "c_us": 546.2,
-      "rs_us": 665.8,
-      "speedup": 0.82
+      "c_us": 548.5,
+      "rs_us": 615.9,
+      "speedup": 0.89
     },
     {
       "name": "SMA(20)",
       "c_us": 91.2,
-      "rs_us": 55.0,
+      "rs_us": 55.1,
       "speedup": 1.66
     },
     {
       "name": "SQRT",
-      "c_us": 23.3,
-      "rs_us": 26.6,
-      "speedup": 0.88
+      "c_us": 23.4,
+      "rs_us": 29.1,
+      "speedup": 0.81
     },
     {
       "name": "STDDEV(20)",
-      "c_us": 139.9,
-      "rs_us": 149.5,
-      "speedup": 0.94
+      "c_us": 140.0,
+      "rs_us": 152.2,
+      "speedup": 0.92
     },
     {
       "name": "STOCH",
-      "c_us": 531.2,
-      "rs_us": 376.0,
-      "speedup": 1.41
+      "c_us": 615.4,
+      "rs_us": 369.0,
+      "speedup": 1.67
     },
     {
       "name": "STOCHF",
-      "c_us": 572.3,
-      "rs_us": 325.2,
-      "speedup": 1.76
+      "c_us": 553.6,
+      "rs_us": 337.8,
+      "speedup": 1.64
     },
     {
       "name": "STOCHRSI(14)",
-      "c_us": 856.5,
-      "rs_us": 776.8,
-      "speedup": 1.1
+      "c_us": 896.3,
+      "rs_us": 794.2,
+      "speedup": 1.13
     },
     {
       "name": "SUB",
-      "c_us": 18.6,
+      "c_us": 18.5,
       "rs_us": 18.6,
       "speedup": 1.0
     },
     {
       "name": "SUM(30)",
-      "c_us": 97.3,
-      "rs_us": 65.0,
+      "c_us": 97.2,
+      "rs_us": 64.9,
       "speedup": 1.5
     },
     {
       "name": "T3(5)",
-      "c_us": 162.0,
-      "rs_us": 199.1,
+      "c_us": 162.1,
+      "rs_us": 199.0,
       "speedup": 0.81
     },
     {
       "name": "TEMA(20)",
-      "c_us": 392.4,
+      "c_us": 391.2,
       "rs_us": 141.2,
-      "speedup": 2.78
+      "speedup": 2.77
     },
     {
       "name": "TRANGE",
-      "c_us": 26.1,
+      "c_us": 25.7,
       "rs_us": 29.5,
-      "speedup": 0.88
+      "speedup": 0.87
     },
     {
       "name": "TRIMA(20)",
       "c_us": 171.0,
-      "rs_us": 111.4,
+      "rs_us": 111.1,
       "speedup": 1.54
     },
     {
       "name": "TRIX(15)",
-      "c_us": 411.5,
-      "rs_us": 197.1,
-      "speedup": 2.09
+      "c_us": 409.6,
+      "rs_us": 197.0,
+      "speedup": 2.08
     },
     {
       "name": "TSF(14)",
-      "c_us": 411.4,
-      "rs_us": 187.4,
-      "speedup": 2.2
+      "c_us": 408.4,
+      "rs_us": 187.7,
+      "speedup": 2.18
     },
     {
       "name": "TYPPRICE",
-      "c_us": 25.1,
+      "c_us": 24.9,
       "rs_us": 28.3,
-      "speedup": 0.89
+      "speedup": 0.88
     },
     {
       "name": "ULTOSC",
-      "c_us": 364.6,
-      "rs_us": 314.0,
-      "speedup": 1.16
+      "c_us": 342.1,
+      "rs_us": 316.3,
+      "speedup": 1.08
     },
     {
       "name": "VAR(20)",
       "c_us": 116.0,
-      "rs_us": 120.6,
-      "speedup": 0.96
+      "rs_us": 124.0,
+      "speedup": 0.94
     },
     {
       "name": "WCLPRICE",
-      "c_us": 24.8,
-      "rs_us": 29.7,
-      "speedup": 0.83
+      "c_us": 24.6,
+      "rs_us": 29.2,
+      "speedup": 0.84
     },
     {
       "name": "WILLR(14)",
-      "c_us": 517.1,
-      "rs_us": 408.9,
-      "speedup": 1.26
+      "c_us": 481.9,
+      "rs_us": 385.4,
+      "speedup": 1.25
     },
     {
       "name": "WMA(20)",
-      "c_us": 114.0,
-      "rs_us": 117.6,
-      "speedup": 0.97
+      "c_us": 115.0,
+      "rs_us": 116.6,
+      "speedup": 0.99
     }
   ],
   "1000000": [
     {
       "name": "AD",
-      "c_us": 790.4,
-      "rs_us": 747.2,
-      "speedup": 1.06
+      "c_us": 787.3,
+      "rs_us": 701.1,
+      "speedup": 1.12
     },
     {
       "name": "ADD",
-      "c_us": 193.8,
-      "rs_us": 204.4,
-      "speedup": 0.95
+      "c_us": 191.4,
+      "rs_us": 194.8,
+      "speedup": 0.98
     },
     {
       "name": "ADOSC",
-      "c_us": 1664.9,
-      "rs_us": 1523.2,
-      "speedup": 1.09
+      "c_us": 1653.5,
+      "rs_us": 1490.3,
+      "speedup": 1.11
     },
     {
       "name": "ADX(14)",
-      "c_us": 6132.8,
-      "rs_us": 3731.0,
+      "c_us": 6078.7,
+      "rs_us": 3714.7,
       "speedup": 1.64
     },
     {
       "name": "ADXR(14)",
-      "c_us": 6188.6,
-      "rs_us": 4406.2,
-      "speedup": 1.4
+      "c_us": 6170.2,
+      "rs_us": 4335.9,
+      "speedup": 1.42
     },
     {
       "name": "APO",
-      "c_us": 2005.3,
-      "rs_us": 1809.8,
-      "speedup": 1.11
+      "c_us": 2015.9,
+      "rs_us": 1858.1,
+      "speedup": 1.08
     },
     {
       "name": "AROON(14)",
-      "c_us": 4065.7,
-      "rs_us": 4762.3,
-      "speedup": 0.85
+      "c_us": 3985.2,
+      "rs_us": 4598.8,
+      "speedup": 0.87
     },
     {
       "name": "AROONOSC(14)",
-      "c_us": 3940.2,
-      "rs_us": 4683.2,
+      "c_us": 3817.6,
+      "rs_us": 4534.9,
       "speedup": 0.84
     },
     {
       "name": "ATR(14)",
-      "c_us": 3907.0,
-      "rs_us": 4037.8,
-      "speedup": 0.97
+      "c_us": 3898.4,
+      "rs_us": 4383.5,
+      "speedup": 0.89
     },
     {
       "name": "AVGPRICE",
-      "c_us": 371.4,
-      "rs_us": 445.5,
-      "speedup": 0.83
+      "c_us": 400.2,
+      "rs_us": 445.7,
+      "speedup": 0.9
     },
     {
       "name": "BBANDS(20)",
-      "c_us": 3482.7,
-      "rs_us": 1176.5,
+      "c_us": 3734.4,
+      "rs_us": 1263.6,
       "speedup": 2.96
     },
     {
       "name": "BETA(5)",
-      "c_us": 3065.8,
-      "rs_us": 1782.3,
-      "speedup": 1.72
+      "c_us": 3024.2,
+      "rs_us": 1752.8,
+      "speedup": 1.73
     },
     {
       "name": "BOP",
-      "c_us": 524.8,
-      "rs_us": 432.7,
-      "speedup": 1.21
+      "c_us": 517.0,
+      "rs_us": 424.6,
+      "speedup": 1.22
     },
     {
       "name": "CCI(14)",
-      "c_us": 6905.6,
-      "rs_us": 5174.6,
-      "speedup": 1.33
+      "c_us": 6760.0,
+      "rs_us": 4973.1,
+      "speedup": 1.36
     },
     {
       "name": "CDL3BLACKCROWS",
-      "c_us": 5474.0,
-      "rs_us": 6184.4,
-      "speedup": 0.89
+      "c_us": 5543.8,
+      "rs_us": 6020.7,
+      "speedup": 0.92
     },
     {
       "name": "CDLDOJI",
-      "c_us": 866.5,
-      "rs_us": 4266.4,
-      "speedup": 0.2
+      "c_us": 857.3,
+      "rs_us": 4172.0,
+      "speedup": 0.21
     },
     {
       "name": "CDLENGULFING",
-      "c_us": 4115.2,
-      "rs_us": 3522.0,
-      "speedup": 1.17
+      "c_us": 4075.8,
+      "rs_us": 3524.2,
+      "speedup": 1.16
     },
     {
       "name": "CDLHAMMER",
-      "c_us": 11235.3,
-      "rs_us": 7828.2,
-      "speedup": 1.44
+      "c_us": 10768.3,
+      "rs_us": 7622.6,
+      "speedup": 1.41
     },
     {
       "name": "CDLHIKKAKE",
-      "c_us": 4024.5,
-      "rs_us": 4147.5,
-      "speedup": 0.97
+      "c_us": 3976.3,
+      "rs_us": 4143.2,
+      "speedup": 0.96
     },
     {
       "name": "CDLMORNINGSTAR",
-      "c_us": 6609.8,
-      "rs_us": 4922.8,
-      "speedup": 1.34
+      "c_us": 6339.1,
+      "rs_us": 4630.5,
+      "speedup": 1.37
     },
     {
       "name": "CMO(14)",
-      "c_us": 4047.1,
-      "rs_us": 3695.7,
-      "speedup": 1.1
+      "c_us": 3867.7,
+      "rs_us": 3486.6,
+      "speedup": 1.11
     },
     {
       "name": "CORREL(30)",
-      "c_us": 2183.0,
-      "rs_us": 1838.9,
+      "c_us": 2039.1,
+      "rs_us": 1711.6,
       "speedup": 1.19
     },
     {
       "name": "COS",
-      "c_us": 7323.2,
-      "rs_us": 7410.8,
-      "speedup": 0.99
+      "c_us": 7085.5,
+      "rs_us": 7111.0,
+      "speedup": 1.0
     },
     {
       "name": "DEMA(20)",
-      "c_us": 2636.8,
-      "rs_us": 2654.0,
-      "speedup": 0.99
+      "c_us": 2631.1,
+      "rs_us": 2639.8,
+      "speedup": 1.0
     },
     {
       "name": "DIV",
-      "c_us": 204.1,
-      "rs_us": 206.7,
-      "speedup": 0.99
+      "c_us": 188.7,
+      "rs_us": 188.6,
+      "speedup": 1.0
     },
     {
       "name": "DX(14)",
-      "c_us": 5906.1,
-      "rs_us": 5128.6,
-      "speedup": 1.15
+      "c_us": 5797.3,
+      "rs_us": 5387.4,
+      "speedup": 1.08
     },
     {
       "name": "EMA(20)",
-      "c_us": 1193.4,
-      "rs_us": 1315.7,
-      "speedup": 0.91
+      "c_us": 1207.0,
+      "rs_us": 1317.3,
+      "speedup": 0.92
     },
     {
       "name": "EXP",
-      "c_us": 1514.7,
-      "rs_us": 1570.6,
+      "c_us": 1495.5,
+      "rs_us": 1565.9,
       "speedup": 0.96
     },
     {
       "name": "HT_DCPERIOD",
-      "c_us": 26640.3,
-      "rs_us": 29128.0,
-      "speedup": 0.91
+      "c_us": 26738.8,
+      "rs_us": 29159.3,
+      "speedup": 0.92
     },
     {
       "name": "HT_DCPHASE",
-      "c_us": 115981.5,
-      "rs_us": 119556.2,
-      "speedup": 0.97
+      "c_us": 112827.8,
+      "rs_us": 116955.2,
+      "speedup": 0.96
     },
     {
       "name": "HT_PHASOR",
-      "c_us": 27175.2,
-      "rs_us": 29724.5,
+      "c_us": 27159.7,
+      "rs_us": 29776.7,
       "speedup": 0.91
     },
     {
       "name": "HT_SINE",
-      "c_us": 125963.5,
-      "rs_us": 124885.2,
+      "c_us": 122859.4,
+      "rs_us": 122141.8,
       "speedup": 1.01
     },
     {
       "name": "HT_TRENDLINE",
-      "c_us": 32363.1,
-      "rs_us": 34862.0,
-      "speedup": 0.93
+      "c_us": 31931.7,
+      "rs_us": 34599.3,
+      "speedup": 0.92
     },
     {
       "name": "HT_TRENDMODE",
-      "c_us": 136854.1,
-      "rs_us": 143722.6,
+      "c_us": 132901.0,
+      "rs_us": 140170.0,
       "speedup": 0.95
     },
     {
       "name": "KAMA(30)",
-      "c_us": 1456.8,
-      "rs_us": 2060.7,
+      "c_us": 1432.6,
+      "rs_us": 2025.5,
       "speedup": 0.71
     },
     {
       "name": "LINEARREG(14)",
-      "c_us": 4216.7,
-      "rs_us": 1902.7,
-      "speedup": 2.22
+      "c_us": 4024.0,
+      "rs_us": 1840.8,
+      "speedup": 2.19
     },
     {
       "name": "LINEARREG_ANGLE",
-      "c_us": 7306.0,
-      "rs_us": 4069.0,
-      "speedup": 1.8
+      "c_us": 7179.5,
+      "rs_us": 4030.3,
+      "speedup": 1.78
     },
     {
       "name": "LINEARREG_INTERCEPT",
-      "c_us": 4213.4,
-      "rs_us": 1674.0,
-      "speedup": 2.52
+      "c_us": 4066.4,
+      "rs_us": 1629.6,
+      "speedup": 2.5
     },
     {
       "name": "LINEARREG_SLOPE",
-      "c_us": 4137.0,
-      "rs_us": 1664.0,
-      "speedup": 2.49
+      "c_us": 4011.2,
+      "rs_us": 1632.8,
+      "speedup": 2.46
     },
     {
       "name": "LN",
-      "c_us": 1758.7,
-      "rs_us": 1841.8,
-      "speedup": 0.95
+      "c_us": 1729.5,
+      "rs_us": 1806.0,
+      "speedup": 0.96
     },
     {
       "name": "MA(30,SMA)",
-      "c_us": 919.0,
-      "rs_us": 586.2,
-      "speedup": 1.57
+      "c_us": 901.8,
+      "rs_us": 557.3,
+      "speedup": 1.62
     },
     {
       "name": "MACD",
-      "c_us": 4378.3,
-      "rs_us": 2936.6,
-      "speedup": 1.49
+      "c_us": 4262.9,
+      "rs_us": 2844.2,
+      "speedup": 1.5
     },
     {
       "name": "MACDEXT",
-      "c_us": 4232.8,
-      "rs_us": 9006.4,
-      "speedup": 0.47
+      "c_us": 4189.6,
+      "rs_us": 8521.4,
+      "speedup": 0.49
     },
     {
       "name": "MACDFIX(9)",
-      "c_us": 4272.2,
-      "rs_us": 2900.8,
+      "c_us": 4244.5,
+      "rs_us": 2880.0,
       "speedup": 1.47
     },
     {
       "name": "MAMA",
-      "c_us": 34921.4,
-      "rs_us": 35722.1,
-      "speedup": 0.98
+      "c_us": 33641.0,
+      "rs_us": 34930.5,
+      "speedup": 0.96
     },
     {
       "name": "MAX(30)",
-      "c_us": 2175.0,
-      "rs_us": 2303.6,
-      "speedup": 0.94
+      "c_us": 2172.0,
+      "rs_us": 2179.8,
+      "speedup": 1.0
     },
     {
       "name": "MEDPRICE",
-      "c_us": 215.1,
-      "rs_us": 265.5,
-      "speedup": 0.81
+      "c_us": 192.7,
+      "rs_us": 247.3,
+      "speedup": 0.78
     },
     {
       "name": "MFI(14)",
-      "c_us": 7205.5,
-      "rs_us": 4553.1,
-      "speedup": 1.58
+      "c_us": 6808.9,
+      "rs_us": 4350.1,
+      "speedup": 1.57
     },
     {
       "name": "MIDPOINT(14)",
-      "c_us": 39510.2,
-      "rs_us": 4107.4,
-      "speedup": 9.62
+      "c_us": 39421.6,
+      "rs_us": 3978.5,
+      "speedup": 9.91
     },
     {
       "name": "MIDPRICE(14)",
-      "c_us": 5223.8,
-      "rs_us": 4128.2,
-      "speedup": 1.27
+      "c_us": 5063.3,
+      "rs_us": 3913.6,
+      "speedup": 1.29
     },
     {
       "name": "MIN(30)",
-      "c_us": 3869.9,
-      "rs_us": 2796.9,
-      "speedup": 1.38
+      "c_us": 3818.9,
+      "rs_us": 2741.5,
+      "speedup": 1.39
     },
     {
       "name": "MINMAX(30)",
-      "c_us": 4441.6,
-      "rs_us": 5657.1,
-      "speedup": 0.79
+      "c_us": 4405.1,
+      "rs_us": 5432.6,
+      "speedup": 0.81
     },
     {
       "name": "MINMAXINDEX(30)",
-      "c_us": 5517.1,
-      "rs_us": 5793.8,
-      "speedup": 0.95
+      "c_us": 5362.3,
+      "rs_us": 5498.9,
+      "speedup": 0.98
     },
     {
       "name": "MINUS_DI(14)",
-      "c_us": 3478.8,
-      "rs_us": 3528.8,
-      "speedup": 0.99
+      "c_us": 3409.7,
+      "rs_us": 3481.3,
+      "speedup": 0.98
     },
     {
       "name": "MINUS_DM(14)",
-      "c_us": 3673.0,
-      "rs_us": 3523.0,
+      "c_us": 3633.1,
+      "rs_us": 3498.3,
       "speedup": 1.04
     },
     {
       "name": "MOM(10)",
-      "c_us": 125.5,
-      "rs_us": 187.3,
-      "speedup": 0.67
+      "c_us": 124.2,
+      "rs_us": 177.5,
+      "speedup": 0.7
     },
     {
       "name": "MULT",
-      "c_us": 208.1,
-      "rs_us": 202.5,
+      "c_us": 195.3,
+      "rs_us": 190.4,
       "speedup": 1.03
     },
     {
       "name": "NATR(14)",
-      "c_us": 4000.7,
-      "rs_us": 3778.1,
-      "speedup": 1.06
-    },
-    {
-      "name": "OBV",
-      "c_us": 3233.8,
-      "rs_us": 3137.0,
-      "speedup": 1.03
-    },
-    {
-      "name": "PLUS_DI(14)",
-      "c_us": 3796.6,
-      "rs_us": 3483.7,
-      "speedup": 1.09
-    },
-    {
-      "name": "PLUS_DM(14)",
-      "c_us": 3633.6,
-      "rs_us": 3470.0,
+      "c_us": 3933.4,
+      "rs_us": 3739.1,
       "speedup": 1.05
     },
     {
+      "name": "OBV",
+      "c_us": 3120.2,
+      "rs_us": 3067.3,
+      "speedup": 1.02
+    },
+    {
+      "name": "PLUS_DI(14)",
+      "c_us": 4078.6,
+      "rs_us": 3480.2,
+      "speedup": 1.17
+    },
+    {
+      "name": "PLUS_DM(14)",
+      "c_us": 3627.4,
+      "rs_us": 3472.3,
+      "speedup": 1.04
+    },
+    {
       "name": "PPO",
-      "c_us": 2304.8,
-      "rs_us": 2230.2,
-      "speedup": 1.03
+      "c_us": 2290.5,
+      "rs_us": 1926.6,
+      "speedup": 1.19
     },
     {
       "name": "ROC(10)",
-      "c_us": 495.1,
-      "rs_us": 545.5,
-      "speedup": 0.91
+      "c_us": 475.8,
+      "rs_us": 511.0,
+      "speedup": 0.93
     },
     {
       "name": "ROCP(10)",
-      "c_us": 511.6,
-      "rs_us": 405.0,
-      "speedup": 1.26
+      "c_us": 477.1,
+      "rs_us": 364.5,
+      "speedup": 1.31
     },
     {
       "name": "ROCR(10)",
-      "c_us": 505.0,
-      "rs_us": 345.8,
-      "speedup": 1.46
+      "c_us": 470.0,
+      "rs_us": 337.0,
+      "speedup": 1.39
     },
     {
       "name": "ROCR100(10)",
-      "c_us": 489.2,
-      "rs_us": 568.3,
-      "speedup": 0.86
-    },
-    {
-      "name": "RSI(14)",
-      "c_us": 4144.6,
-      "rs_us": 3795.8,
-      "speedup": 1.09
-    },
-    {
-      "name": "SAR",
-      "c_us": 4090.7,
-      "rs_us": 4678.8,
-      "speedup": 0.87
-    },
-    {
-      "name": "SAREXT",
-      "c_us": 4227.8,
-      "rs_us": 4786.3,
+      "c_us": 451.8,
+      "rs_us": 516.3,
       "speedup": 0.88
     },
     {
+      "name": "RSI(14)",
+      "c_us": 3820.6,
+      "rs_us": 3737.8,
+      "speedup": 1.02
+    },
+    {
+      "name": "SAR",
+      "c_us": 3887.1,
+      "rs_us": 4220.2,
+      "speedup": 0.92
+    },
+    {
+      "name": "SAREXT",
+      "c_us": 4021.2,
+      "rs_us": 4408.0,
+      "speedup": 0.91
+    },
+    {
       "name": "SIN",
-      "c_us": 7367.2,
-      "rs_us": 7445.5,
-      "speedup": 0.99
+      "c_us": 7258.5,
+      "rs_us": 7370.5,
+      "speedup": 0.98
     },
     {
       "name": "SMA(20)",
-      "c_us": 909.4,
-      "rs_us": 605.1,
-      "speedup": 1.5
+      "c_us": 909.3,
+      "rs_us": 566.5,
+      "speedup": 1.61
     },
     {
       "name": "SQRT",
-      "c_us": 230.6,
-      "rs_us": 288.4,
+      "c_us": 228.9,
+      "rs_us": 286.9,
       "speedup": 0.8
     },
     {
       "name": "STDDEV(20)",
-      "c_us": 1424.0,
-      "rs_us": 1558.7,
-      "speedup": 0.91
+      "c_us": 1396.9,
+      "rs_us": 1502.5,
+      "speedup": 0.93
     },
     {
       "name": "STOCH",
-      "c_us": 6887.7,
-      "rs_us": 3854.7,
-      "speedup": 1.79
+      "c_us": 6721.4,
+      "rs_us": 3667.8,
+      "speedup": 1.83
     },
     {
       "name": "STOCHF",
-      "c_us": 6024.1,
-      "rs_us": 3372.3,
-      "speedup": 1.79
+      "c_us": 5783.8,
+      "rs_us": 3256.8,
+      "speedup": 1.78
     },
     {
       "name": "STOCHRSI(14)",
-      "c_us": 9607.2,
-      "rs_us": 10032.8,
-      "speedup": 0.96
+      "c_us": 9418.9,
+      "rs_us": 9733.3,
+      "speedup": 0.97
     },
     {
       "name": "SUB",
-      "c_us": 202.5,
-      "rs_us": 202.4,
-      "speedup": 1.0
+      "c_us": 198.5,
+      "rs_us": 196.6,
+      "speedup": 1.01
     },
     {
       "name": "SUM(30)",
-      "c_us": 969.2,
-      "rs_us": 670.2,
-      "speedup": 1.45
+      "c_us": 969.9,
+      "rs_us": 813.9,
+      "speedup": 1.19
     },
     {
       "name": "T3(5)",
-      "c_us": 1647.6,
-      "rs_us": 2280.2,
-      "speedup": 0.72
-    },
-    {
-      "name": "TEMA(20)",
-      "c_us": 4470.3,
-      "rs_us": 1454.7,
-      "speedup": 3.07
-    },
-    {
-      "name": "TRANGE",
-      "c_us": 285.7,
-      "rs_us": 354.5,
-      "speedup": 0.81
-    },
-    {
-      "name": "TRIMA(20)",
-      "c_us": 1736.8,
-      "rs_us": 1219.4,
-      "speedup": 1.42
-    },
-    {
-      "name": "TRIX(15)",
-      "c_us": 4115.2,
-      "rs_us": 1989.6,
-      "speedup": 2.07
-    },
-    {
-      "name": "TSF(14)",
-      "c_us": 4144.5,
-      "rs_us": 1925.4,
-      "speedup": 2.15
-    },
-    {
-      "name": "TYPPRICE",
-      "c_us": 272.6,
-      "rs_us": 327.9,
+      "c_us": 1667.3,
+      "rs_us": 2014.3,
       "speedup": 0.83
     },
     {
+      "name": "TEMA(20)",
+      "c_us": 3919.2,
+      "rs_us": 1425.2,
+      "speedup": 2.75
+    },
+    {
+      "name": "TRANGE",
+      "c_us": 281.5,
+      "rs_us": 333.5,
+      "speedup": 0.84
+    },
+    {
+      "name": "TRIMA(20)",
+      "c_us": 1713.8,
+      "rs_us": 1154.2,
+      "speedup": 1.48
+    },
+    {
+      "name": "TRIX(15)",
+      "c_us": 4100.8,
+      "rs_us": 1955.5,
+      "speedup": 2.1
+    },
+    {
+      "name": "TSF(14)",
+      "c_us": 4104.8,
+      "rs_us": 1877.0,
+      "speedup": 2.19
+    },
+    {
+      "name": "TYPPRICE",
+      "c_us": 262.0,
+      "rs_us": 320.1,
+      "speedup": 0.82
+    },
+    {
       "name": "ULTOSC",
-      "c_us": 3714.2,
-      "rs_us": 3534.6,
-      "speedup": 1.05
+      "c_us": 3608.9,
+      "rs_us": 3353.1,
+      "speedup": 1.08
     },
     {
       "name": "VAR(20)",
-      "c_us": 1186.5,
-      "rs_us": 1268.8,
+      "c_us": 1157.5,
+      "rs_us": 1226.8,
       "speedup": 0.94
     },
     {
       "name": "WCLPRICE",
-      "c_us": 295.9,
-      "rs_us": 344.3,
-      "speedup": 0.86
+      "c_us": 262.3,
+      "rs_us": 317.6,
+      "speedup": 0.83
     },
     {
       "name": "WILLR(14)",
-      "c_us": 5984.0,
-      "rs_us": 4333.1,
-      "speedup": 1.38
+      "c_us": 5689.6,
+      "rs_us": 4221.9,
+      "speedup": 1.35
     },
     {
       "name": "WMA(20)",
-      "c_us": 1143.7,
-      "rs_us": 1196.8,
+      "c_us": 1138.0,
+      "rs_us": 1182.0,
       "speedup": 0.96
     }
   ]

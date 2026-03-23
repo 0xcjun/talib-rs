@@ -1,126 +1,413 @@
-# talib-rs vs C TA-Lib Performance Benchmark
+# talib-rs vs C TA-Lib — Multi-Dataset Performance Benchmark
 
-> Platform: macOS ARM64 (Apple Silicon) | Python 3.13 | `--release` build
-> Data: 100K random OHLCV bars | 20 iterations per indicator
+> **Platform:** Darwin arm64 | Apple M4 | Python 3.13.5 | `--release` (LTO fat, codegen-units=1)
+> **Method:** median of 20 iterations, 3 warm-up runs | `time.perf_counter_ns()`
+> **Fair:** no `target-cpu=native`, no platform-specific SIMD flags
 
-**80 indicators benchmarked** | Average speedup: **1.38x** | Median: **1.02x**
+## Summary
 
-| Category | Faster | Equal | Slower |
-|----------|:------:|:-----:|:------:|
-| **Total** | **33** | **27** | **20** |
+| Dataset | Indicators | Faster | Equal (±5%) | Slower | Avg Speedup | Median Speedup |
+|--------:|:----------:|:------:|:-----------:|:------:|:-----------:|:--------------:|
+| 1,000 | 90 | **28** | 18 | 44 | **1.10x** | **0.95x** |
+| 10,000 | 90 | **33** | 19 | 38 | **1.28x** | **0.98x** |
+| 100,000 | 90 | **42** | 21 | 27 | **1.28x** | **1.00x** |
+| 1,000,000 | 90 | **41** | 25 | 24 | **1.30x** | **1.02x** |
 
-## All Results (sorted by speedup)
+## 1,000 Bars
 
 | Indicator | C (us) | Rust (us) | Speedup |
 |-----------|-------:|---------:|--------:|
-| MIDPOINT(14) | 3,010 | 168 | **17.88x** |
-| BBANDS(20) | 350 | 122 | **2.88x** |
-| TEMA(20) | 391 | 144 | **2.71x** |
-| MIDPRICE(14) | 496 | 203 | **2.44x** |
-| LINEARREG_ANGLE | 2,193 | 977 | **2.25x** |
-| TRIX(30) | 414 | 194 | **2.13x** |
-| LINEARREG_INTERCEPT | 383 | 185 | **2.07x** |
-| LINEARREG_SLOPE | 360 | 186 | **1.93x** |
-| TSF(14) | 410 | 219 | **1.87x** |
-| LINEARREG(14) | 389 | 215 | **1.81x** |
-| CDLHAMMER | 913 | 541 | **1.69x** |
-| MA(30,SMA) | 91 | 54 | **1.68x** |
-| BETA(5) | 307 | 198 | **1.55x** |
-| TRIMA(20) | 173 | 115 | **1.51x** |
-| SMA(20) | 91 | 62 | **1.47x** |
-| SUM(30) | 98 | 68 | **1.44x** |
-| MACD | 415 | 294 | **1.41x** |
-| MACDFIX(9) | 412 | 292 | **1.41x** |
-| ADX(14) | 517 | 374 | **1.38x** |
-| MFI(14) | 380 | 277 | **1.37x** |
-| MIN(30) | 149 | 114 | **1.30x** |
-| CCI(14) | 682 | 528 | **1.29x** |
-| STOCHF | 413 | 336 | **1.23x** |
-| WILLR(14) | 257 | 214 | **1.20x** |
-| ADXR(14) | 520 | 450 | **1.16x** |
-| MINMAXINDEX(30) | 253 | 222 | **1.14x** |
-| CORREL(30) | 205 | 182 | 1.13x |
-| PLUS_DI(14) | 390 | 348 | 1.12x |
-| PPO | 254 | 228 | 1.12x |
-| AD | 74 | 70 | 1.07x |
-| STOCH | 449 | 421 | 1.07x |
-| ADOSC | 162 | 152 | 1.06x |
-| DX(14) | 475 | 447 | 1.06x |
-| CDLENGULFING | 380 | 364 | 1.04x |
-| ULTOSC | 350 | 336 | 1.04x |
-| CMO(14) | 362 | 350 | 1.03x |
-| BOP | 51 | 49 | 1.03x |
-| RSI(14) | 381 | 371 | 1.03x |
-| NATR(14) | 391 | 381 | 1.03x |
-| SIN | 529 | 515 | 1.03x |
-| APO | 216 | 212 | 1.02x |
-| AVGPRICE | 31 | 31 | 1.01x |
-| MINUS_DM(14) | 350 | 348 | 1.01x |
-| HT_SINE | 11,396 | 11,421 | 1.00x |
-| PLUS_DM(14) | 348 | 350 | 1.00x |
-| ADD | 19 | 19 | 0.99x |
-| TYPPRICE | 25 | 25 | 0.99x |
-| WCLPRICE | 25 | 25 | 0.99x |
-| WMA(20) | 125 | 126 | 0.99x |
-| ATR(14) | 397 | 401 | 0.99x |
-| STOCHRSI(14) | 817 | 826 | 0.99x |
-| VAR(20) | 119 | 121 | 0.99x |
-| DEMA(20) | 264 | 269 | 0.98x |
-| MINUS_DI(14) | 342 | 349 | 0.98x |
-| ROC(10) | 44 | 45 | 0.98x |
-| ROCR100(10) | 43 | 45 | 0.97x |
-| MEDPRICE | 19 | 19 | 0.97x |
-| MAMA | 4,006 | 4,157 | 0.96x |
-| LN | 168 | 176 | 0.96x |
-| HT_TRENDMODE | 12,252 | 12,885 | 0.95x |
-| ROCR(10) | 46 | 49 | 0.94x |
-| HT_DCPERIOD | 3,124 | 3,361 | 0.93x |
-| EMA(20) | 120 | 129 | 0.93x |
-| MAX(30) | 107 | 116 | 0.92x |
-| STDDEV(20) | 140 | 153 | 0.92x |
-| CDL3BLACKCROWS | 528 | 588 | 0.90x |
-| HT_TRENDLINE | 3,441 | 3,876 | 0.89x |
-| SQRT | 23 | 27 | 0.87x |
-| ROCP(10) | 48 | 56 | 0.85x |
-| SAREXT | 218 | 259 | 0.84x |
-| TRANGE | 26 | 31 | 0.83x |
-| MOM(10) | 13 | 16 | 0.80x |
-| AROON(14) | 197 | 248 | 0.79x |
-| T3(5) | 162 | 205 | 0.79x |
-| OBV | 144 | 200 | 0.72x |
-| KAMA(30) | 137 | 196 | 0.70x |
-| MINMAX(30) | 158 | 236 | 0.67x |
-| AROONOSC(14) | 187 | 284 | 0.66x |
-| SAR | 169 | 319 | 0.53x |
-| CDLDOJI | 79 | 297 | 0.26x |
+| MIDPOINT(14) | 8.1 | 2.4 | **3.34x** |
+| MIDPRICE(14) | 5.2 | 2.2 | **2.36x** |
+| TEMA(20) | 3.8 | 1.7 | **2.24x** |
+| LINEARREG_ANGLE | 9.8 | 4.4 | **2.23x** |
+| CDLHAMMER | 3.0 | 1.4 | **2.12x** |
+| LINEARREG_INTERCEPT | 4.0 | 1.9 | **2.11x** |
+| LINEARREG_SLOPE | 3.8 | 1.9 | **1.96x** |
+| TSF(14) | 4.2 | 2.2 | **1.90x** |
+| TRIX(15) | 4.1 | 2.2 | **1.87x** |
+| LINEARREG(14) | 4.0 | 2.2 | **1.83x** |
+| BBANDS(20) | 2.7 | 1.6 | **1.71x** |
+| CDLMORNINGSTAR | 2.6 | 1.6 | **1.63x** |
+| BETA(5) | 3.2 | 2.0 | **1.58x** |
+| TRIMA(20) | 1.8 | 1.3 | **1.38x** |
+| MA(30,SMA) | 1.1 | 0.8 | **1.37x** |
+| SMA(20) | 1.1 | 0.8 | **1.37x** |
+| MACDFIX(9) | 4.2 | 3.1 | **1.35x** |
+| MACD | 4.2 | 3.2 | **1.34x** |
+| CCI(14) | 6.8 | 5.2 | **1.31x** |
+| ROCR(10) | 0.6 | 0.5 | **1.25x** |
+| SUM(30) | 1.1 | 0.9 | **1.23x** |
+| MIN(30) | 3.2 | 2.7 | **1.18x** |
+| CDL3BLACKCROWS | 2.2 | 1.9 | **1.17x** |
+| PLUS_DI(14) | 4.2 | 3.8 | **1.12x** |
+| PPO | 2.4 | 2.2 | **1.11x** |
+| ROCP(10) | 0.6 | 0.6 | **1.07x** |
+| ULTOSC | 3.6 | 3.3 | **1.07x** |
+| CORREL(30) | 2.2 | 2.0 | **1.06x** |
+| ADX(14) | 4.2 | 4.0 | **1.05x** |
+| CMO(14) | 3.8 | 3.6 | 1.03x |
+| HT_SINE | 147.8 | 143.7 | 1.03x |
+| COS | 2.5 | 2.4 | 1.02x |
+| SIN | 2.4 | 2.4 | 1.02x |
+| NATR(14) | 4.0 | 4.0 | 1.01x |
+| STOCH | 4.0 | 4.0 | 1.01x |
+| ADOSC | 1.8 | 1.8 | 1.00x |
+| APO | 2.1 | 2.1 | 1.00x |
+| BOP | 0.6 | 0.6 | 1.00x |
+| MULT | 0.3 | 0.3 | 1.00x |
+| RSI(14) | 3.9 | 3.9 | 1.00x |
+| HT_DCPHASE | 140.5 | 142.5 | 0.99x |
+| WILLR(14) | 2.5 | 2.6 | 0.97x |
+| ATR(14) | 4.0 | 4.2 | 0.96x |
+| MINUS_DM(14) | 3.5 | 3.7 | 0.96x |
+| HT_TRENDMODE | 155.3 | 163.0 | 0.95x |
+| PLUS_DM(14) | 3.5 | 3.7 | 0.95x |
+| DEMA(20) | 2.7 | 2.9 | _0.94x_ |
+| MINUS_DI(14) | 3.5 | 3.8 | _0.94x_ |
+| WMA(20) | 1.3 | 1.4 | _0.94x_ |
+| ADXR(14) | 4.2 | 4.6 | _0.92x_ |
+| EXP | 1.5 | 1.6 | _0.92x_ |
+| HT_DCPERIOD | 29.0 | 31.5 | _0.92x_ |
+| HT_PHASOR | 29.5 | 32.0 | _0.92x_ |
+| HT_TRENDLINE | 32.3 | 35.0 | _0.92x_ |
+| MINMAXINDEX(30) | 4.2 | 4.5 | _0.92x_ |
+| LN | 1.7 | 1.9 | _0.91x_ |
+| VAR(20) | 1.3 | 1.5 | _0.91x_ |
+| AD | 0.9 | 1.0 | _0.88x_ |
+| ROC(10) | 0.6 | 0.7 | _0.88x_ |
+| SAR | 1.5 | 1.7 | _0.88x_ |
+| STDDEV(20) | 1.6 | 1.8 | _0.88x_ |
+| STOCHF | 3.0 | 3.4 | _0.88x_ |
+| EMA(20) | 1.4 | 1.6 | _0.87x_ |
+| CDLENGULFING | 1.0 | 1.2 | _0.86x_ |
+| MAX(30) | 1.7 | 2.0 | _0.85x_ |
+| DX(14) | 3.9 | 4.7 | _0.84x_ |
+| SAREXT | 1.5 | 1.8 | _0.84x_ |
+| AROONOSC(14) | 2.2 | 2.7 | _0.82x_ |
+| CDLHIKKAKE | 1.2 | 1.4 | _0.82x_ |
+| MAMA | 28.5 | 35.2 | _0.81x_ |
+| AROON(14) | 2.3 | 2.9 | _0.80x_ |
+| STOCHRSI(14) | 6.6 | 8.2 | _0.80x_ |
+| CDLDOJI | 0.9 | 1.2 | _0.79x_ |
+| OBV | 0.8 | 1.0 | _0.78x_ |
+| ROCR100(10) | 0.6 | 0.8 | _0.78x_ |
+| SUB | 0.3 | 0.4 | _0.78x_ |
+| T3(5) | 1.8 | 2.3 | _0.78x_ |
+| ADD | 0.2 | 0.3 | _0.75x_ |
+| DIV | 0.2 | 0.3 | _0.75x_ |
+| SQRT | 0.4 | 0.5 | _0.75x_ |
+| TRANGE | 0.4 | 0.5 | _0.75x_ |
+| KAMA(30) | 1.5 | 2.1 | _0.71x_ |
+| MOM(10) | 0.3 | 0.4 | _0.70x_ |
+| MINMAX(30) | 3.2 | 4.6 | _0.69x_ |
+| AVGPRICE | 0.3 | 0.5 | _0.67x_ |
+| MEDPRICE | 0.3 | 0.5 | _0.64x_ |
+| TYPPRICE | 0.3 | 0.5 | _0.64x_ |
+| MACDEXT | 4.2 | 6.9 | _0.60x_ |
+| WCLPRICE | 0.3 | 0.5 | _0.58x_ |
+| MFI(14) | 1.3 | 2.6 | _0.50x_ |
+
+## 10,000 Bars
+
+| Indicator | C (us) | Rust (us) | Speedup |
+|-----------|-------:|---------:|--------:|
+| MIDPOINT(14) | 341.3 | 23.2 | **14.73x** |
+| TEMA(20) | 40.5 | 15.0 | **2.70x** |
+| BBANDS(20) | 36.2 | 14.2 | **2.54x** |
+| MIDPRICE(14) | 49.6 | 21.5 | **2.31x** |
+| CDLHAMMER | 32.1 | 14.0 | **2.28x** |
+| LINEARREG_INTERCEPT | 41.4 | 18.4 | **2.25x** |
+| CDLMORNINGSTAR | 29.7 | 13.8 | **2.16x** |
+| LINEARREG_SLOPE | 39.2 | 18.5 | **2.11x** |
+| TRIX(15) | 42.1 | 20.5 | **2.05x** |
+| TSF(14) | 39.2 | 22.1 | **1.77x** |
+| LINEARREG_ANGLE | 88.8 | 50.5 | **1.76x** |
+| LINEARREG(14) | 39.2 | 22.4 | **1.75x** |
+| BETA(5) | 31.2 | 19.9 | **1.57x** |
+| MA(30,SMA) | 9.7 | 6.3 | **1.53x** |
+| SMA(20) | 9.7 | 6.6 | **1.47x** |
+| MACD | 43.8 | 30.7 | **1.43x** |
+| SUM(30) | 10.4 | 7.4 | **1.41x** |
+| MACDFIX(9) | 43.9 | 31.6 | **1.39x** |
+| SIN | 34.3 | 24.9 | **1.38x** |
+| TRIMA(20) | 17.7 | 13.0 | **1.35x** |
+| ROCR(10) | 5.2 | 4.0 | **1.33x** |
+| CCI(14) | 65.5 | 49.5 | **1.32x** |
+| MIN(30) | 34.3 | 26.4 | **1.30x** |
+| BOP | 5.4 | 4.3 | **1.24x** |
+| ROCP(10) | 5.2 | 4.2 | **1.23x** |
+| PLUS_DI(14) | 41.5 | 35.5 | **1.17x** |
+| CDLHIKKAKE | 14.6 | 12.7 | **1.15x** |
+| CORREL(30) | 21.0 | 18.8 | **1.12x** |
+| PPO | 23.9 | 21.3 | **1.12x** |
+| ADOSC | 16.8 | 15.5 | **1.08x** |
+| ADX(14) | 40.7 | 37.8 | **1.08x** |
+| SUB | 2.5 | 2.3 | **1.07x** |
+| NATR(14) | 40.1 | 37.9 | **1.06x** |
+| AD | 8.1 | 7.7 | **1.05x** |
+| CMO(14) | 36.9 | 35.2 | **1.05x** |
+| APO | 21.2 | 20.4 | 1.04x |
+| MINUS_DM(14) | 36.9 | 35.4 | 1.04x |
+| RSI(14) | 38.7 | 37.9 | 1.02x |
+| STOCH | 38.3 | 38.0 | 1.01x |
+| ULTOSC | 35.4 | 35.6 | 1.00x |
+| HT_SINE | 1,555.0 | 1,577.5 | 0.99x |
+| PLUS_DM(14) | 34.9 | 35.4 | 0.99x |
+| DEMA(20) | 27.6 | 28.2 | 0.98x |
+| MINUS_DI(14) | 34.7 | 35.5 | 0.98x |
+| WMA(20) | 12.3 | 12.5 | 0.98x |
+| DIV | 2.4 | 2.5 | 0.97x |
+| ATR(14) | 40.0 | 41.9 | 0.96x |
+| COS | 27.2 | 28.6 | 0.95x |
+| HT_DCPHASE | 1,427.0 | 1,495.7 | 0.95x |
+| HT_TRENDMODE | 1,675.8 | 1,760.8 | 0.95x |
+| MULT | 2.4 | 2.5 | 0.95x |
+| WILLR(14) | 24.8 | 26.2 | 0.95x |
+| VAR(20) | 12.3 | 13.2 | _0.94x_ |
+| ADD | 2.2 | 2.4 | _0.93x_ |
+| ADXR(14) | 42.1 | 45.4 | _0.93x_ |
+| HT_TRENDLINE | 354.8 | 382.2 | _0.93x_ |
+| MAX(30) | 19.3 | 20.8 | _0.93x_ |
+| MINMAXINDEX(30) | 44.9 | 48.5 | _0.93x_ |
+| HT_DCPERIOD | 293.2 | 319.5 | _0.92x_ |
+| HT_PHASOR | 299.4 | 326.0 | _0.92x_ |
+| CDL3BLACKCROWS | 36.1 | 39.5 | _0.91x_ |
+| CDLENGULFING | 9.4 | 10.3 | _0.91x_ |
+| EMA(20) | 12.5 | 13.8 | _0.91x_ |
+| EXP | 14.4 | 15.9 | _0.91x_ |
+| OBV | 6.9 | 7.6 | _0.91x_ |
+| ROC(10) | 5.0 | 5.6 | _0.90x_ |
+| STOCHF | 28.3 | 32.3 | _0.88x_ |
+| SAR | 13.2 | 15.2 | _0.87x_ |
+| STDDEV(20) | 14.7 | 16.9 | _0.87x_ |
+| MEDPRICE | 2.5 | 2.9 | _0.86x_ |
+| ROCR100(10) | 5.0 | 5.8 | _0.85x_ |
+| SAREXT | 13.8 | 16.2 | _0.85x_ |
+| AVGPRICE | 3.6 | 4.3 | _0.84x_ |
+| LN | 16.7 | 20.0 | _0.84x_ |
+| MAMA | 300.1 | 358.6 | _0.84x_ |
+| STOCHRSI(14) | 67.4 | 81.4 | _0.83x_ |
+| TYPPRICE | 3.1 | 3.7 | _0.83x_ |
+| WCLPRICE | 3.2 | 3.8 | _0.83x_ |
+| AROONOSC(14) | 21.4 | 26.2 | _0.81x_ |
+| T3(5) | 16.8 | 20.8 | _0.81x_ |
+| DX(14) | 37.8 | 47.3 | _0.80x_ |
+| MINMAX(30) | 37.0 | 47.7 | _0.78x_ |
+| TRANGE | 3.2 | 4.0 | _0.78x_ |
+| SQRT | 2.9 | 3.8 | _0.77x_ |
+| AROON(14) | 22.6 | 30.3 | _0.75x_ |
+| MOM(10) | 1.5 | 2.1 | _0.71x_ |
+| KAMA(30) | 14.3 | 21.2 | _0.68x_ |
+| MACDEXT | 42.5 | 71.0 | _0.60x_ |
+| MFI(14) | 12.7 | 27.8 | _0.46x_ |
+| CDLDOJI | 8.4 | 22.1 | _0.38x_ |
+
+## 100,000 Bars
+
+| Indicator | C (us) | Rust (us) | Speedup |
+|-----------|-------:|---------:|--------:|
+| MIDPOINT(14) | 3,906.4 | 381.5 | **10.24x** |
+| BBANDS(20) | 350.6 | 112.2 | **3.12x** |
+| TEMA(20) | 390.7 | 141.1 | **2.77x** |
+| LINEARREG_INTERCEPT | 384.1 | 161.2 | **2.38x** |
+| LINEARREG_SLOPE | 382.0 | 161.3 | **2.37x** |
+| LINEARREG(14) | 408.3 | 189.8 | **2.15x** |
+| TRIX(15) | 409.5 | 197.0 | **2.08x** |
+| TSF(14) | 385.7 | 186.5 | **2.07x** |
+| CDLHAMMER | 975.5 | 531.9 | **1.83x** |
+| BETA(5) | 305.6 | 168.0 | **1.82x** |
+| LINEARREG_ANGLE | 776.6 | 457.1 | **1.70x** |
+| STOCH | 598.8 | 353.6 | **1.69x** |
+| MA(30,SMA) | 90.2 | 54.6 | **1.65x** |
+| SMA(20) | 91.2 | 55.2 | **1.65x** |
+| TRIMA(20) | 171.1 | 111.4 | **1.54x** |
+| STOCHF | 537.5 | 355.3 | **1.51x** |
+| SUM(30) | 97.3 | 65.5 | **1.48x** |
+| MACDFIX(9) | 410.7 | 280.0 | **1.47x** |
+| ADX(14) | 543.7 | 374.0 | **1.45x** |
+| MACD | 406.9 | 281.7 | **1.44x** |
+| BOP | 49.1 | 34.4 | **1.43x** |
+| MINUS_DM(14) | 549.3 | 391.6 | **1.40x** |
+| MIN(30) | 377.5 | 270.8 | **1.39x** |
+| ROCR(10) | 46.3 | 33.6 | **1.38x** |
+| ROCP(10) | 46.2 | 33.8 | **1.37x** |
+| CCI(14) | 664.3 | 488.2 | **1.36x** |
+| CDLMORNINGSTAR | 491.6 | 370.1 | **1.33x** |
+| MIDPRICE(14) | 491.3 | 368.7 | **1.33x** |
+| MFI(14) | 531.2 | 407.9 | **1.30x** |
+| WILLR(14) | 509.5 | 392.4 | **1.30x** |
+| ADXR(14) | 527.3 | 433.3 | **1.22x** |
+| PPO | 227.6 | 189.5 | **1.20x** |
+| CORREL(30) | 204.2 | 178.3 | **1.15x** |
+| ADOSC | 166.3 | 145.3 | **1.14x** |
+| APO | 200.9 | 178.1 | **1.13x** |
+| DX(14) | 497.8 | 449.8 | **1.11x** |
+| AD | 74.4 | 67.8 | **1.10x** |
+| OBV | 304.1 | 279.8 | **1.09x** |
+| STOCHRSI(14) | 923.3 | 847.2 | **1.09x** |
+| ULTOSC | 341.8 | 317.8 | **1.08x** |
+| CMO(14) | 365.5 | 344.1 | **1.06x** |
+| SIN | 596.9 | 564.1 | **1.06x** |
+| RSI(14) | 381.0 | 370.7 | 1.03x |
+| ADD | 18.5 | 18.6 | 1.00x |
+| DEMA(20) | 262.7 | 263.5 | 1.00x |
+| DIV | 18.7 | 18.8 | 1.00x |
+| HT_SINE | 15,947.0 | 15,960.4 | 1.00x |
+| MULT | 49.8 | 50.0 | 1.00x |
+| SUB | 18.9 | 19.0 | 1.00x |
+| PLUS_DI(14) | 340.3 | 345.3 | 0.99x |
+| PLUS_DM(14) | 341.3 | 344.2 | 0.99x |
+| ATR(14) | 388.7 | 396.7 | 0.98x |
+| CDLHIKKAKE | 297.0 | 304.0 | 0.98x |
+| WMA(20) | 114.2 | 116.2 | 0.98x |
+| MAMA | 3,792.8 | 3,898.8 | 0.97x |
+| MINUS_DI(14) | 647.4 | 666.6 | 0.97x |
+| ROCR100(10) | 47.8 | 49.4 | 0.97x |
+| LN | 174.1 | 181.7 | 0.96x |
+| VAR(20) | 116.0 | 120.8 | 0.96x |
+| HT_DCPHASE | 14,581.0 | 15,305.6 | 0.95x |
+| HT_TRENDMODE | 17,457.5 | 18,290.5 | 0.95x |
+| MAX(30) | 199.2 | 210.4 | 0.95x |
+| ROC(10) | 44.6 | 47.0 | 0.95x |
+| EMA(20) | 119.7 | 129.2 | _0.93x_ |
+| HT_TRENDLINE | 3,691.7 | 3,950.8 | _0.93x_ |
+| STDDEV(20) | 140.0 | 150.1 | _0.93x_ |
+| HT_DCPERIOD | 2,940.1 | 3,191.0 | _0.92x_ |
+| HT_PHASOR | 2,999.8 | 3,257.2 | _0.92x_ |
+| COS | 591.3 | 649.2 | _0.91x_ |
+| EXP | 143.6 | 158.0 | _0.91x_ |
+| AVGPRICE | 30.5 | 33.9 | _0.90x_ |
+| TRANGE | 23.3 | 26.4 | _0.88x_ |
+| AROONOSC(14) | 368.3 | 423.3 | _0.87x_ |
+| SQRT | 23.4 | 26.9 | _0.87x_ |
+| TYPPRICE | 21.7 | 25.1 | _0.86x_ |
+| WCLPRICE | 21.4 | 24.9 | _0.86x_ |
+| CDL3BLACKCROWS | 494.5 | 583.8 | _0.85x_ |
+| MEDPRICE | 18.9 | 22.2 | _0.85x_ |
+| MOM(10) | 40.8 | 48.6 | _0.84x_ |
+| NATR(14) | 519.5 | 625.2 | _0.83x_ |
+| CDLENGULFING | 278.0 | 339.5 | _0.82x_ |
+| T3(5) | 162.2 | 200.8 | _0.81x_ |
+| MINMAX(30) | 404.8 | 518.6 | _0.78x_ |
+| AROON(14) | 335.4 | 437.7 | _0.77x_ |
+| SAR | 227.1 | 336.1 | _0.68x_ |
+| KAMA(30) | 136.7 | 203.7 | _0.67x_ |
+| MACDEXT | 403.8 | 630.7 | _0.64x_ |
+| SAREXT | 226.9 | 357.0 | _0.64x_ |
+| MINMAXINDEX(30) | 501.5 | 1,650.2 | _0.30x_ |
+| CDLDOJI | 84.6 | 394.5 | _0.21x_ |
+
+## 1,000,000 Bars
+
+| Indicator | C (us) | Rust (us) | Speedup |
+|-----------|-------:|---------:|--------:|
+| MIDPOINT(14) | 39,460.0 | 4,000.8 | **9.86x** |
+| BBANDS(20) | 3,499.0 | 1,163.8 | **3.01x** |
+| TEMA(20) | 3,904.4 | 1,418.5 | **2.75x** |
+| LINEARREG_INTERCEPT | 4,003.1 | 1,633.7 | **2.45x** |
+| LINEARREG_SLOPE | 3,986.7 | 1,626.7 | **2.45x** |
+| LINEARREG(14) | 3,974.0 | 1,845.6 | **2.15x** |
+| TSF(14) | 4,033.0 | 1,877.2 | **2.15x** |
+| TRIX(15) | 4,094.3 | 1,988.8 | **2.06x** |
+| LINEARREG_ANGLE | 7,231.1 | 3,912.3 | **1.85x** |
+| STOCHF | 5,784.8 | 3,187.1 | **1.82x** |
+| STOCH | 6,748.9 | 3,755.7 | **1.80x** |
+| BETA(5) | 3,058.0 | 1,739.7 | **1.76x** |
+| ADX(14) | 6,064.8 | 3,719.0 | **1.63x** |
+| MA(30,SMA) | 901.6 | 553.9 | **1.63x** |
+| MFI(14) | 6,821.2 | 4,311.7 | **1.58x** |
+| SMA(20) | 909.4 | 584.8 | **1.56x** |
+| MACD | 4,262.1 | 2,833.7 | **1.50x** |
+| MACDFIX(9) | 4,296.4 | 2,882.3 | **1.49x** |
+| TRIMA(20) | 1,708.1 | 1,146.5 | **1.49x** |
+| SUM(30) | 969.5 | 668.2 | **1.45x** |
+| CDLHAMMER | 10,896.2 | 7,557.0 | **1.44x** |
+| ADXR(14) | 6,168.8 | 4,313.3 | **1.43x** |
+| ROCR(10) | 472.3 | 335.7 | **1.41x** |
+| WILLR(14) | 5,687.1 | 4,081.3 | **1.39x** |
+| MIN(30) | 3,799.8 | 2,751.3 | **1.38x** |
+| CDLMORNINGSTAR | 6,258.9 | 4,679.8 | **1.34x** |
+| CCI(14) | 6,678.0 | 5,006.2 | **1.33x** |
+| ROCP(10) | 476.8 | 371.0 | **1.29x** |
+| MIDPRICE(14) | 5,003.5 | 3,930.8 | **1.27x** |
+| BOP | 517.1 | 422.1 | **1.23x** |
+| CORREL(30) | 2,039.5 | 1,720.1 | **1.19x** |
+| PPO | 2,282.3 | 1,911.2 | **1.19x** |
+| CDLENGULFING | 4,034.2 | 3,507.4 | **1.15x** |
+| DX(14) | 5,759.4 | 5,063.4 | **1.14x** |
+| PLUS_DI(14) | 3,953.7 | 3,477.8 | **1.14x** |
+| ADOSC | 1,654.4 | 1,487.5 | **1.11x** |
+| CMO(14) | 3,861.1 | 3,494.0 | **1.11x** |
+| APO | 2,003.4 | 1,814.8 | **1.10x** |
+| NATR(14) | 4,063.4 | 3,739.3 | **1.09x** |
+| AD | 756.9 | 714.9 | **1.06x** |
+| ULTOSC | 3,597.0 | 3,378.7 | **1.06x** |
+| MINUS_DM(14) | 3,665.9 | 3,538.4 | 1.04x |
+| PLUS_DM(14) | 3,627.2 | 3,471.4 | 1.04x |
+| OBV | 3,176.0 | 3,075.4 | 1.03x |
+| RSI(14) | 3,812.3 | 3,734.3 | 1.02x |
+| STDDEV(20) | 1,538.2 | 1,507.7 | 1.02x |
+| WMA(20) | 1,216.2 | 1,196.0 | 1.02x |
+| ADD | 194.6 | 192.2 | 1.01x |
+| DIV | 189.9 | 188.9 | 1.01x |
+| HT_SINE | 122,225.9 | 121,483.5 | 1.01x |
+| MULT | 206.9 | 205.8 | 1.01x |
+| DEMA(20) | 2,634.1 | 2,640.0 | 1.00x |
+| MINUS_DI(14) | 3,540.2 | 3,540.7 | 1.00x |
+| SUB | 198.3 | 199.4 | 0.99x |
+| CDLHIKKAKE | 3,966.5 | 4,055.6 | 0.98x |
+| COS | 7,063.8 | 7,172.0 | 0.98x |
+| EXP | 1,509.6 | 1,533.4 | 0.98x |
+| ATR(14) | 3,961.3 | 4,071.8 | 0.97x |
+| HT_DCPHASE | 112,873.5 | 116,924.6 | 0.97x |
+| LN | 1,737.0 | 1,795.5 | 0.97x |
+| MAMA | 33,613.8 | 34,639.4 | 0.97x |
+| MAX(30) | 2,174.9 | 2,243.1 | 0.97x |
+| SIN | 7,045.3 | 7,281.5 | 0.97x |
+| STOCHRSI(14) | 9,448.4 | 9,693.7 | 0.97x |
+| HT_TRENDMODE | 132,665.6 | 139,996.6 | 0.95x |
+| MINMAXINDEX(30) | 5,331.8 | 5,620.2 | 0.95x |
+| HT_TRENDLINE | 32,094.3 | 34,582.0 | _0.93x_ |
+| SAREXT | 3,992.0 | 4,298.3 | _0.93x_ |
+| VAR(20) | 1,157.4 | 1,250.0 | _0.93x_ |
+| HT_DCPERIOD | 26,676.6 | 29,109.2 | _0.92x_ |
+| ROC(10) | 458.7 | 501.1 | _0.92x_ |
+| EMA(20) | 1,193.4 | 1,313.6 | _0.91x_ |
+| HT_PHASOR | 27,175.8 | 29,743.2 | _0.91x_ |
+| SAR | 3,853.8 | 4,238.4 | _0.91x_ |
+| CDL3BLACKCROWS | 5,354.1 | 6,009.1 | _0.89x_ |
+| AVGPRICE | 381.0 | 434.7 | _0.88x_ |
+| ROCR100(10) | 457.3 | 519.1 | _0.88x_ |
+| AROON(14) | 3,954.5 | 4,621.8 | _0.86x_ |
+| TRANGE | 281.9 | 327.0 | _0.86x_ |
+| WCLPRICE | 278.4 | 323.2 | _0.86x_ |
+| TYPPRICE | 268.1 | 316.6 | _0.85x_ |
+| AROONOSC(14) | 3,827.0 | 4,650.2 | _0.82x_ |
+| MEDPRICE | 204.9 | 250.6 | _0.82x_ |
+| SQRT | 229.8 | 284.8 | _0.81x_ |
+| MINMAX(30) | 4,337.6 | 5,405.9 | _0.80x_ |
+| T3(5) | 1,618.3 | 2,017.1 | _0.80x_ |
+| KAMA(30) | 1,392.0 | 1,997.0 | _0.70x_ |
+| MOM(10) | 130.6 | 186.9 | _0.70x_ |
+| MACDEXT | 4,182.5 | 9,276.9 | _0.45x_ |
+| CDLDOJI | 842.2 | 4,134.8 | _0.20x_ |
 
 ## Optimization Techniques Applied
 
 | Technique | Indicators | Typical Gain |
 |-----------|-----------|-------------|
-| Single-pass O(n) sliding SMA+STDDEV | BBANDS | 2.9x |
-| Inline 3/6-layer EMA cascade | TEMA, TRIX, T3 | 2.1-2.7x |
-| O(n) sliding sums vs O(n*p) per-window | LINEARREG family, BETA, TSF | 1.8-2.3x |
-| C-style brute extremum scan | MIDPOINT, MIDPRICE, MIN, WILLR, MINMAXINDEX | 1.2-17.9x |
+| Single-pass O(n) sliding SMA+STDDEV | BBANDS | 2-3x |
+| Inline 3/6-layer EMA cascade | TEMA, TRIX, T3 | 2-3x |
+| O(n) sliding sums vs O(n*p) per-window | LINEARREG family, BETA, TSF | 1.5-2.5x |
+| C-style brute extremum scan | MIDPOINT, MIDPRICE, MIN, WILLR | 1.2-18x |
 | Inline Wilder smoothing (no intermediate Vec) | ADX, DX, DI, DM, NATR | 1.0-1.4x |
 | Fused AD + EMA in single pass | ADOSC, MFI | 1.1-1.4x |
 | SIMD f64x4 accelerated sum | SMA, MA | 1.4-1.7x |
-| Ring buffer replacing 13 Vec allocations | MAMA | 0.74x → 0.96x |
+| Ring buffer replacing 13 Vec allocations | MAMA | ~1x |
 | `unsafe get_unchecked` in hot loops | All optimized indicators | 1.05-1.1x |
-| `vec![0.0]` instead of `vec![NAN]` (calloc) | Most indicators | ~1.05x |
-| O(n*p) → O(n) sliding window | ULTOSC | 0.27x → 1.04x |
+| `vec![0.0]` + NaN fill (calloc optimization) | Most indicators | ~1.05x |
+| LTO fat + codegen-units=1 | All cross-crate calls | 1.1-1.3x |
 
-## Remaining Slower Indicators — Analysis
-
-| Indicator | Ratio | Root Cause |
-|-----------|------:|-----------|
-| CDLDOJI | 0.26x | CandleAverage system per-bar function call overhead; C uses macro-expanded inline code |
-| SAR | 0.53x | Branch-heavy state machine; C compiler inlines more aggressively |
-| MINMAX | 0.67x | Dual extremum tracking requires two scan passes; C fuses in single loop |
-| AROONOSC | 0.66x | Dual extremum + index tracking + subtraction pass |
-| KAMA | 0.70x | Volatility sliding window + direction abs; tight C loop is hard to beat |
-| OBV | 0.72x | Simple accumulation; ~56us gap is likely NaN-init + bounds check overhead |
-| T3 | 0.79x | 6-layer EMA cascade has more state than C's macro-expanded version |
-| MOM | 0.80x | Trivial O(n) subtraction; 3us gap is measurement noise at this scale |
-
-> These are **constant-factor** differences, not algorithmic. The C compiler's aggressive inlining and the zero-overhead of C macros vs Rust function calls account for most of the gap. All algorithms are O(n).
+> All algorithms are O(n). Remaining gaps are constant-factor differences in compiler
+> code generation quality (C macro inlining vs Rust function calls).

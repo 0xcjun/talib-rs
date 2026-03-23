@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "talib-rs"
-version = "0.1.1"
+version = "0.1.2"
 description = "Pure Rust technical analysis library — drop-in replacement for TA-Lib"
 requires-python = ">=3.9"
 license = { text = "BSD-3-Clause" }

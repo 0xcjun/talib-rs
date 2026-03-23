@@ -26,17 +26,17 @@ const SMOOTH_PRICE_SIZE: usize = 50;
 // Hilbert Transform variables for one signal (even/odd buffers)
 // ============================================================
 
-struct HilbertVars {
-    odd: [f64; 3],
-    even: [f64; 3],
-    prev_odd: f64,
-    prev_even: f64,
-    prev_input_odd: f64,
-    prev_input_even: f64,
+pub(crate) struct HilbertVars {
+    pub(crate) odd: [f64; 3],
+    pub(crate) even: [f64; 3],
+    pub(crate) prev_odd: f64,
+    pub(crate) prev_even: f64,
+    pub(crate) prev_input_odd: f64,
+    pub(crate) prev_input_even: f64,
 }
 
 impl HilbertVars {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             odd: [0.0; 3],
             even: [0.0; 3],
@@ -51,7 +51,7 @@ impl HilbertVars {
 /// Perform the Hilbert transform for an even bar.
 /// Returns the transformed value.
 #[inline(always)]
-fn do_hilbert_even(
+pub(crate) fn do_hilbert_even(
     vars: &mut HilbertVars,
     input: f64,
     hilbert_idx: usize,
@@ -72,7 +72,7 @@ fn do_hilbert_even(
 /// Perform the Hilbert transform for an odd bar.
 /// Returns the transformed value.
 #[inline(always)]
-fn do_hilbert_odd(
+pub(crate) fn do_hilbert_odd(
     vars: &mut HilbertVars,
     input: f64,
     hilbert_idx: usize,
@@ -94,17 +94,17 @@ fn do_hilbert_odd(
 // WMA price smoother (running implementation matching C TA-Lib)
 // ============================================================
 
-struct WmaState {
-    period_wma_sub: f64,
-    period_wma_sum: f64,
-    trailing_wma_value: f64,
-    trailing_wma_idx: usize,
+pub(crate) struct WmaState {
+    pub(crate) period_wma_sub: f64,
+    pub(crate) period_wma_sum: f64,
+    pub(crate) trailing_wma_value: f64,
+    pub(crate) trailing_wma_idx: usize,
 }
 
 impl WmaState {
     /// Initialize WMA with first 3 prices (unrolled, matching C TA-Lib).
     /// `start` is the index of the first price bar.
-    fn init(input: &[f64], start: usize) -> (Self, usize) {
+    pub(crate) fn init(input: &[f64], start: usize) -> (Self, usize) {
         // Match C TA-Lib's exact step-by-step accumulation order.
         // Floating-point addition is NOT associative; the order matters
         // for bit-identical results over hundreds of running iterations.
@@ -131,7 +131,7 @@ impl WmaState {
 
     /// Compute next smoothed value (DO_PRICE_WMA macro equivalent).
     #[inline(always)]
-    fn next(&mut self, input: &[f64], new_price: f64) -> f64 {
+    pub(crate) fn next(&mut self, input: &[f64], new_price: f64) -> f64 {
         self.period_wma_sub += new_price;
         self.period_wma_sub -= self.trailing_wma_value;
         self.period_wma_sum += new_price * 4.0;

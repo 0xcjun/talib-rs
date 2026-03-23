@@ -33,9 +33,8 @@ pub fn kama(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 
     let direction = (input[lookback] - input[0]).abs();
     let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
-    let sc = er.mul_add(sc_diff, slow_sc); // FMA: er*sc_diff + slow_sc
-    let sc_sq = sc * sc;
-    prev_kama = sc_sq.mul_add(input[lookback] - prev_kama, prev_kama); // FMA: sc²*(x-prev)+prev
+    let sc = er * sc_diff + slow_sc;
+    prev_kama += (sc * sc) * (input[lookback] - prev_kama);
     output[lookback] = prev_kama;
 
     for i in (lookback + 1)..len {
@@ -43,9 +42,8 @@ pub fn kama(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
             - (input[i - timeperiod] - input[i - timeperiod - 1]).abs();
         let direction = (input[i] - input[i - timeperiod]).abs();
         let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
-        let sc = er.mul_add(sc_diff, slow_sc);
-        let sc_sq = sc * sc;
-        prev_kama = sc_sq.mul_add(input[i] - prev_kama, prev_kama);
+        let sc = er * sc_diff + slow_sc;
+        prev_kama += (sc * sc) * (input[i] - prev_kama);
         output[i] = prev_kama;
     }
 

@@ -263,8 +263,11 @@ class TestMomentumConsistency:
     @pytest.mark.parametrize("period", [7, 14, 20])
     def test_CCI(self, ds_name, period):
         _, high, low, close, _ = DATASETS[ds_name]
+        # CCI uses O(n) sliding sum for avg (vs C's O(n*p) per-window recompute)
+        # → FP drift up to ~1e-9 on trending data
         compare(rs.CCI(high, low, close, period),
-                c_talib.CCI(high, low, close, timeperiod=period), f"CCI({period})")
+                c_talib.CCI(high, low, close, timeperiod=period), f"CCI({period})",
+                rtol=1e-8)
 
     @pytest.mark.parametrize("ds_name", ['random_1k', 'trending_up'])
     @pytest.mark.parametrize("period", [5, 10, 20])

@@ -8,7 +8,7 @@ use crate::simd::sum_f64;
 /// c1 = -v^3, c2 = 3v^2 + 3v^3, c3 = -6v^2 - 3v - 3v^3, c4 = 1 + 3v + v^3 + 3v^2
 /// lookback = 6 * (timeperiod - 1)
 ///
-/// 优化版本：6 次 EMA 逐层计算，无需中间 Vec 分配（filter NaN）。
+/// 优化版本：6 次 EMA 逐层级联计算，仅 1 个输出 Vec，无中间分配。
 pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>> {
     if timeperiod < 2 {
         return Err(TaError::InvalidParameter {
@@ -28,39 +28,10 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
 
     let k = 2.0 / (timeperiod as f64 + 1.0);
     let one_minus_k = 1.0 - k;
-    let p = timeperiod - 1;
+    let p = timeperiod - 1; // p = period - 1
+    let tp = timeperiod as f64;
 
-    // 辅助：计算一层 EMA，从 start_idx 开始（前一层有效值起始处）
-    // 返回完整长度数组，仅 [start_idx + p ..] 有效
-    let compute_ema_layer = |prev_layer: &[f64], start_idx: usize| -> Vec<f64> {
-        let mut ema = vec![f64::NAN; len];
-        let seed = sum_f64(&prev_layer[start_idx..(start_idx + timeperiod)]) / timeperiod as f64;
-        let new_start = start_idx + p;
-        ema[new_start] = seed;
-        for i in (new_start + 1)..len {
-            ema[i] = prev_layer[i] * k + ema[i - 1] * one_minus_k;
-        }
-        ema
-    };
-
-    // EMA1: 对 input 做 EMA，有效值从 index p 开始
-    let mut e1 = vec![f64::NAN; len];
-    let seed1 = sum_f64(&input[..timeperiod]) / timeperiod as f64;
-    e1[p] = seed1;
-    for i in timeperiod..len {
-        e1[i] = input[i] * k + e1[i - 1] * one_minus_k;
-    }
-
-    // EMA2 ~ EMA5: 每层从前一层有效值起始处开始
-    let e2 = compute_ema_layer(&e1, p); // 有效从 2p
-    let e3 = compute_ema_layer(&e2, 2 * p); // 有效从 3p
-    let e4 = compute_ema_layer(&e3, 3 * p); // 有效从 4p
-    let e5 = compute_ema_layer(&e4, 4 * p); // 有效从 5p
-
-    // EMA6: 只需要标量跟踪（最后一层），不需要完整数组
-    let seed6 = sum_f64(&e5[(5 * p)..(5 * p + timeperiod)]) / timeperiod as f64;
-
-    // T3 系数
+    // T3 coefficients
     let v = v_factor;
     let v2 = v * v;
     let v3 = v2 * v;
@@ -69,14 +40,85 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     let c3 = -6.0 * v2 - 3.0 * v - 3.0 * v3;
     let c4 = 1.0 + 3.0 * v + v3 + 3.0 * v2;
 
-    let mut output = vec![f64::NAN; len];
-    let mut e6_prev = seed6;
-    // 第一个输出在 index = lookback = 6*p
-    output[lookback] = c1 * e6_prev + c2 * e5[lookback] + c3 * e4[lookback] + c4 * e3[lookback];
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
 
+    // Phase 1: Build up EMA1 values [p .. 2p], accumulate SMA for EMA2 seed
+    // EMA1 seed = SMA(input[0..timeperiod])
+    let seed1 = sum_f64(&input[..timeperiod]) / tp;
+    let mut e1 = seed1;
+    let mut sum2 = seed1;
+    for i in timeperiod..(2 * p + 1) {
+        e1 = unsafe { *input.get_unchecked(i) } * k + e1 * one_minus_k;
+        sum2 += e1;
+    }
+
+    // Phase 2: Build up EMA2 values [2p .. 3p], accumulate SMA for EMA3 seed
+    let seed2 = sum2 / tp;
+    let mut e2 = seed2;
+    let mut sum3 = seed2;
+    for i in (2 * p + 1)..(3 * p + 1) {
+        let inp = unsafe { *input.get_unchecked(i) };
+        e1 = inp * k + e1 * one_minus_k;
+        e2 = e1 * k + e2 * one_minus_k;
+        sum3 += e2;
+    }
+
+    // Phase 3: Build up EMA3 values [3p .. 4p], accumulate SMA for EMA4 seed
+    let seed3 = sum3 / tp;
+    let mut e3 = seed3;
+    let mut sum4 = seed3;
+    for i in (3 * p + 1)..(4 * p + 1) {
+        let inp = unsafe { *input.get_unchecked(i) };
+        e1 = inp * k + e1 * one_minus_k;
+        e2 = e1 * k + e2 * one_minus_k;
+        e3 = e2 * k + e3 * one_minus_k;
+        sum4 += e3;
+    }
+
+    // Phase 4: Build up EMA4 values [4p .. 5p], accumulate SMA for EMA5 seed
+    let seed4 = sum4 / tp;
+    let mut e4 = seed4;
+    let mut sum5 = seed4;
+    for i in (4 * p + 1)..(5 * p + 1) {
+        let inp = unsafe { *input.get_unchecked(i) };
+        e1 = inp * k + e1 * one_minus_k;
+        e2 = e1 * k + e2 * one_minus_k;
+        e3 = e2 * k + e3 * one_minus_k;
+        e4 = e3 * k + e4 * one_minus_k;
+        sum5 += e4;
+    }
+
+    // Phase 5: Build up EMA5 values [5p .. 6p], accumulate SMA for EMA6 seed
+    let seed5 = sum5 / tp;
+    let mut e5 = seed5;
+    let mut sum6 = seed5;
+    for i in (5 * p + 1)..(6 * p + 1) {
+        let inp = unsafe { *input.get_unchecked(i) };
+        e1 = inp * k + e1 * one_minus_k;
+        e2 = e1 * k + e2 * one_minus_k;
+        e3 = e2 * k + e3 * one_minus_k;
+        e4 = e3 * k + e4 * one_minus_k;
+        e5 = e4 * k + e5 * one_minus_k;
+        sum6 += e5;
+    }
+
+    // Phase 6: EMA6 seed ready, compute first output at index 6*p = lookback
+    let seed6 = sum6 / tp;
+    let mut e6 = seed6;
+    unsafe { *output.get_unchecked_mut(lookback) = c1 * e6 + c2 * e5 + c3 * e4 + c4 * e3; }
+
+    // Steady state: all 6 layers cascade per bar
     for i in (lookback + 1)..len {
-        e6_prev = e5[i] * k + e6_prev * one_minus_k;
-        output[i] = c1 * e6_prev + c2 * e5[i] + c3 * e4[i] + c4 * e3[i];
+        unsafe {
+            e1 = *input.get_unchecked(i) * k + e1 * one_minus_k;
+            e2 = e1 * k + e2 * one_minus_k;
+            e3 = e2 * k + e3 * one_minus_k;
+            e4 = e3 * k + e4 * one_minus_k;
+            e5 = e4 * k + e5 * one_minus_k;
+            e6 = e5 * k + e6 * one_minus_k;
+            *output.get_unchecked_mut(i) = c1 * e6 + c2 * e5 + c3 * e4 + c4 * e3;
+        }
     }
 
     Ok(output)
@@ -93,5 +135,56 @@ mod tests {
         // lookback = 6*(5-1) = 24
         assert!(result[23].is_nan());
         assert!(!result[24].is_nan());
+    }
+
+    /// Verify optimized output matches original Vec-based implementation bit-for-bit.
+    #[test]
+    fn test_t3_numerical_equivalence() {
+        fn t3_reference(input: &[f64], timeperiod: usize, v_factor: f64) -> Vec<f64> {
+            let len = input.len();
+            let k = 2.0 / (timeperiod as f64 + 1.0);
+            let one_minus_k = 1.0 - k;
+            let p = timeperiod - 1;
+            let tp = timeperiod as f64;
+            let compute_ema_layer = |prev_layer: &[f64], start_idx: usize| -> Vec<f64> {
+                let ns = start_idx + p;
+                let mut ema = vec![0.0_f64; len];
+                ema[..ns].fill(f64::NAN);
+                let seed: f64 = prev_layer[start_idx..(start_idx + timeperiod)].iter().sum::<f64>() / tp;
+                ema[ns] = seed;
+                for i in (ns + 1)..len { ema[i] = prev_layer[i] * k + ema[i - 1] * one_minus_k; }
+                ema
+            };
+            let mut e1 = vec![0.0_f64; len];
+            e1[..p].fill(f64::NAN);
+            let seed1: f64 = input[..timeperiod].iter().sum::<f64>() / tp;
+            e1[p] = seed1;
+            for i in timeperiod..len { e1[i] = input[i] * k + e1[i - 1] * one_minus_k; }
+            let e2 = compute_ema_layer(&e1, p);
+            let e3 = compute_ema_layer(&e2, 2 * p);
+            let e4 = compute_ema_layer(&e3, 3 * p);
+            let e5 = compute_ema_layer(&e4, 4 * p);
+            let v = v_factor; let v2 = v*v; let v3 = v2*v;
+            let c1 = -v3; let c2 = 3.0*v2 + 3.0*v3; let c3 = -6.0*v2 - 3.0*v - 3.0*v3; let c4 = 1.0 + 3.0*v + v3 + 3.0*v2;
+            let seed6: f64 = e5[(5*p)..(5*p+timeperiod)].iter().sum::<f64>() / tp;
+            let lookback = 6 * p;
+            let mut output = vec![0.0_f64; len];
+            output[..lookback].fill(f64::NAN);
+            let mut e6_prev = seed6;
+            output[lookback] = c1 * e6_prev + c2 * e5[lookback] + c3 * e4[lookback] + c4 * e3[lookback];
+            for i in (lookback + 1)..len { e6_prev = e5[i] * k + e6_prev * one_minus_k; output[i] = c1 * e6_prev + c2 * e5[i] + c3 * e4[i] + c4 * e3[i]; }
+            output
+        }
+        for period in [2, 3, 5] {
+            let input: Vec<f64> = (1..=80).map(|x| (x as f64) * 1.1 + 0.3).collect();
+            let opt = t3(&input, period, 0.7).unwrap();
+            let reference = t3_reference(&input, period, 0.7);
+            for i in 0..input.len() {
+                assert!(
+                    (opt[i].is_nan() && reference[i].is_nan()) || opt[i] == reference[i],
+                    "T3 mismatch at index {} for period {}: opt={} ref={}", i, period, opt[i], reference[i]
+                );
+            }
+        }
     }
 }

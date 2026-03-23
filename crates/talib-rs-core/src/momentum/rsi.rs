@@ -23,7 +23,8 @@ pub fn rsi(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         });
     }
 
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
 
     // 计算初始平均涨幅/跌幅
     let mut sum_gain = 0.0;

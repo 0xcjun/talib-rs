@@ -20,8 +20,9 @@ pub fn sma(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         });
     }
 
-    let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
 
     // 初始窗口求和 (SIMD 加速)
     let mut sum: f64 = crate::simd::sum_f64(&input[..timeperiod]);

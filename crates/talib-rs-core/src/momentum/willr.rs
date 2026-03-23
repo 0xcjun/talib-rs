@@ -1,7 +1,6 @@
 use crate::error::{TaError, TaResult};
-use crate::sliding_window::{sliding_max, sliding_min};
 
-/// Williams %R — O(n) 单调队列算法
+/// Williams %R -- scalar brute rescan (amortized O(n))
 ///
 /// WILLR = -100 * (highest_high - close) / (highest_high - lowest_low)
 /// lookback = timeperiod - 1
@@ -28,19 +27,81 @@ pub fn willr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaR
         });
     }
 
-    let max_results = sliding_max(high, timeperiod);
-    let min_results = sliding_min(low, timeperiod);
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
 
-    let mut output = vec![f64::NAN; len];
-    for (j, i) in (lookback..len).enumerate() {
-        let (hh, _) = max_results[j];
-        let (ll, _) = min_results[j];
-        let range = hh - ll;
-        output[i] = if range > 0.0 {
-            -100.0 * (hh - close[i]) / range
+    // Initialize first window [0..timeperiod)
+    let mut highest = high[0];
+    let mut highest_idx: usize = 0;
+    let mut lowest = low[0];
+    let mut lowest_idx: usize = 0;
+    for j in 1..timeperiod {
+        if high[j] >= highest {
+            highest = high[j];
+            highest_idx = j;
+        }
+        if low[j] <= lowest {
+            lowest = low[j];
+            lowest_idx = j;
+        }
+    }
+    {
+        let range = highest - lowest;
+        output[lookback] = if range > 0.0 {
+            -100.0 * (highest - unsafe { *close.get_unchecked(lookback) }) / range
         } else {
             0.0
         };
+    }
+
+    let mut trailing_idx = 1;
+    let mut today = timeperiod;
+
+    while today < len {
+        let h = unsafe { *high.get_unchecked(today) };
+        let l = unsafe { *low.get_unchecked(today) };
+
+        // Max tracking on high[] — scalar brute rescan
+        if highest_idx < trailing_idx {
+            highest_idx = trailing_idx;
+            highest = high[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if high[j] >= highest {
+                    highest = high[j];
+                    highest_idx = j;
+                }
+            }
+        } else if h >= highest {
+            highest_idx = today;
+            highest = h;
+        }
+
+        // Min tracking on low[] — scalar brute rescan
+        if lowest_idx < trailing_idx {
+            lowest_idx = trailing_idx;
+            lowest = low[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if low[j] <= lowest {
+                    lowest = low[j];
+                    lowest_idx = j;
+                }
+            }
+        } else if l <= lowest {
+            lowest_idx = today;
+            lowest = l;
+        }
+
+        let range = highest - lowest;
+        let c = unsafe { *close.get_unchecked(today) };
+        unsafe {
+            *output.get_unchecked_mut(today) = if range > 0.0 {
+                -100.0 * (highest - c) / range
+            } else {
+                0.0
+            };
+        }
+        trailing_idx += 1;
+        today += 1;
     }
 
     Ok(output)

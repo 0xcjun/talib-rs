@@ -1,6 +1,6 @@
 use crate::error::{TaError, TaResult};
 
-/// Balance Of Power (BOP)
+/// Balance Of Power (BOP) — SIMD accelerated
 ///
 /// BOP = (Close - Open) / (High - Low)
 /// lookback = 0
@@ -13,15 +13,8 @@ pub fn bop(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaResult<V
         });
     }
 
-    let mut output = vec![f64::NAN; len];
-    for i in 0..len {
-        let range = high[i] - low[i];
-        output[i] = if range > 0.0 {
-            (close[i] - open[i]) / range
-        } else {
-            0.0
-        };
-    }
+    let mut output = vec![0.0_f64; len];
+    crate::simd::bop_simd(open, high, low, close, &mut output);
 
     Ok(output)
 }

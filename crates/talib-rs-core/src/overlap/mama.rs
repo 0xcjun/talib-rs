@@ -6,6 +6,8 @@ use crate::error::{TaError, TaResult};
 /// 返回 (mama, fama) 两条线。
 /// fastlimit 默认 0.5, slowlimit 默认 0.05
 /// lookback = 32 (Hilbert Transform 需要的初始周期)
+///
+/// Optimized: uses fixed-size ring buffers instead of 13 heap-allocated Vecs.
 pub fn mama(input: &[f64], fastlimit: f64, slowlimit: f64) -> TaResult<(Vec<f64>, Vec<f64>)> {
     let len = input.len();
     let lookback = 32;
@@ -31,100 +33,130 @@ pub fn mama(input: &[f64], fastlimit: f64, slowlimit: f64) -> TaResult<(Vec<f64>
         });
     }
 
-    let mut mama_out = vec![f64::NAN; len];
-    let mut fama_out = vec![f64::NAN; len];
+    let mut mama_out = vec![0.0_f64; len];
+    mama_out[..lookback].fill(f64::NAN);
+    let mut fama_out = vec![0.0_f64; len];
+    fama_out[..lookback].fill(f64::NAN);
 
-    // Hilbert Transform 状态变量
-    let mut smooth = vec![0.0_f64; len];
-    let mut detrender = vec![0.0_f64; len];
-    let mut q1 = vec![0.0_f64; len];
-    let mut i1 = vec![0.0_f64; len];
-    let mut ji = vec![0.0_f64; len];
-    let mut jq = vec![0.0_f64; len];
-    let mut i2 = vec![0.0_f64; len];
-    let mut q2 = vec![0.0_f64; len];
-    let mut re = vec![0.0_f64; len];
-    let mut im = vec![0.0_f64; len];
-    let mut period = vec![0.0_f64; len];
-    let mut smooth_period = vec![0.0_f64; len];
-    let mut phase = vec![0.0_f64; len];
+    // Ring buffers for Hilbert Transform state (need up to 7 history: [i], [i-1]...[i-6])
+    // Index into ring: i % 7
+    let mut smooth_buf = [0.0_f64; 7];
+    let mut detrender_buf = [0.0_f64; 7];
+    let mut q1_buf = [0.0_f64; 7];
+    let mut i1_buf = [0.0_f64; 7];
+    let mut ji_buf = [0.0_f64; 7];
+    let mut jq_buf = [0.0_f64; 7];
 
-    let mut prev_mama = 0.0;
-    let mut prev_fama = 0.0;
+    // Only need current and previous for these
+    let mut i2_prev = 0.0_f64;
+    let mut q2_prev = 0.0_f64;
+    let mut re_prev = 0.0_f64;
+    let mut im_prev = 0.0_f64;
+    let mut period_prev = 0.0_f64;
+    let mut smooth_period_prev = 0.0_f64;
+    let mut phase_prev = 0.0_f64;
+
+    let mut prev_mama = 0.0_f64;
+    let mut prev_fama = 0.0_f64;
 
     let a = 0.0962;
     let b = 0.5769;
 
     for i in 0..len {
+        let ri = i % 7;
+
         if i >= 3 {
-            smooth[i] =
-                (4.0 * input[i] + 3.0 * input[i - 1] + 2.0 * input[i - 2] + input[i - 3]) / 10.0;
+            unsafe {
+                smooth_buf[ri] = (4.0 * *input.get_unchecked(i)
+                    + 3.0 * *input.get_unchecked(i - 1)
+                    + 2.0 * *input.get_unchecked(i - 2)
+                    + *input.get_unchecked(i - 3))
+                    / 10.0;
+            }
         }
 
-        if i >= 6 + 3 {
-            // Hilbert Transform
-            detrender[i] = (a * smooth[i] + b * smooth[i.saturating_sub(2)]
-                - b * smooth[i.saturating_sub(4)]
-                - a * smooth[i.saturating_sub(6)])
-                * (0.075 * period[i.saturating_sub(1)] + 0.54);
+        if i >= 9 {
+            // indices into ring buffer for historical values
+            let r0 = ri;                      // i
+            let r2 = (i.wrapping_sub(2)) % 7; // i-2
+            let r4 = (i.wrapping_sub(4)) % 7; // i-4
+            let r6 = (i.wrapping_sub(6)) % 7; // i-6
+            let r3 = (i.wrapping_sub(3)) % 7; // i-3
 
-            // 计算 InPhase 和 Quadrature
-            q1[i] = (a * detrender[i] + b * detrender[i.saturating_sub(2)]
-                - b * detrender[i.saturating_sub(4)]
-                - a * detrender[i.saturating_sub(6)])
-                * (0.075 * period[i.saturating_sub(1)] + 0.54);
-            i1[i] = detrender[i.saturating_sub(3)];
+            let adj = 0.075 * period_prev + 0.54;
 
-            // Advance phase by 90 degrees
-            ji[i] = (a * i1[i] + b * i1[i.saturating_sub(2)]
-                - b * i1[i.saturating_sub(4)]
-                - a * i1[i.saturating_sub(6)])
-                * (0.075 * period[i.saturating_sub(1)] + 0.54);
-            jq[i] = (a * q1[i] + b * q1[i.saturating_sub(2)]
-                - b * q1[i.saturating_sub(4)]
-                - a * q1[i.saturating_sub(6)])
-                * (0.075 * period[i.saturating_sub(1)] + 0.54);
+            // Detrender
+            detrender_buf[r0] = (a * smooth_buf[r0] + b * smooth_buf[r2]
+                - b * smooth_buf[r4]
+                - a * smooth_buf[r6])
+                * adj;
+
+            // Q1
+            q1_buf[r0] = (a * detrender_buf[r0] + b * detrender_buf[r2]
+                - b * detrender_buf[r4]
+                - a * detrender_buf[r6])
+                * adj;
+
+            // I1
+            i1_buf[r0] = detrender_buf[r3];
+
+            // JI
+            ji_buf[r0] = (a * i1_buf[r0] + b * i1_buf[r2]
+                - b * i1_buf[r4]
+                - a * i1_buf[r6])
+                * adj;
+
+            // JQ
+            jq_buf[r0] = (a * q1_buf[r0] + b * q1_buf[r2]
+                - b * q1_buf[r4]
+                - a * q1_buf[r6])
+                * adj;
 
             // Phasor addition
-            i2[i] = i1[i] - jq[i];
-            q2[i] = q1[i] + ji[i];
+            let mut i2_val = i1_buf[r0] - jq_buf[r0];
+            let mut q2_val = q1_buf[r0] + ji_buf[r0];
 
             // Smooth I2 and Q2
-            i2[i] = 0.2 * i2[i] + 0.8 * i2[i.saturating_sub(1)];
-            q2[i] = 0.2 * q2[i] + 0.8 * q2[i.saturating_sub(1)];
+            i2_val = 0.2 * i2_val + 0.8 * i2_prev;
+            q2_val = 0.2 * q2_val + 0.8 * q2_prev;
 
             // Homodyne discriminator
-            re[i] = i2[i] * i2[i.saturating_sub(1)] + q2[i] * q2[i.saturating_sub(1)];
-            im[i] = i2[i] * q2[i.saturating_sub(1)] - q2[i] * i2[i.saturating_sub(1)];
+            let mut re_val = i2_val * i2_prev + q2_val * q2_prev;
+            let mut im_val = i2_val * q2_prev - q2_val * i2_prev;
 
-            re[i] = 0.2 * re[i] + 0.8 * re[i.saturating_sub(1)];
-            im[i] = 0.2 * im[i] + 0.8 * im[i.saturating_sub(1)];
+            re_val = 0.2 * re_val + 0.8 * re_prev;
+            im_val = 0.2 * im_val + 0.8 * im_prev;
 
-            if im[i] != 0.0 && re[i] != 0.0 {
-                period[i] = 2.0 * std::f64::consts::PI / im[i].atan2(re[i]);
+            let mut period_val = if im_val != 0.0 && re_val != 0.0 {
+                2.0 * std::f64::consts::PI / im_val.atan2(re_val)
+            } else {
+                0.0
+            };
+
+            if period_val > 1.5 * period_prev {
+                period_val = 1.5 * period_prev;
             }
-            if period[i] > 1.5 * period[i.saturating_sub(1)] {
-                period[i] = 1.5 * period[i.saturating_sub(1)];
+            if period_val < 0.67 * period_prev {
+                period_val = 0.67 * period_prev;
             }
-            if period[i] < 0.67 * period[i.saturating_sub(1)] {
-                period[i] = 0.67 * period[i.saturating_sub(1)];
+            if period_val < 6.0 {
+                period_val = 6.0;
             }
-            if period[i] < 6.0 {
-                period[i] = 6.0;
-            }
-            if period[i] > 50.0 {
-                period[i] = 50.0;
+            if period_val > 50.0 {
+                period_val = 50.0;
             }
 
-            period[i] = 0.2 * period[i] + 0.8 * period[i.saturating_sub(1)];
-            smooth_period[i] = 0.33 * period[i] + 0.67 * smooth_period[i.saturating_sub(1)];
+            period_val = 0.2 * period_val + 0.8 * period_prev;
+            let smooth_period_val = 0.33 * period_val + 0.67 * smooth_period_prev;
 
             // Phase
-            if i1[i] != 0.0 {
-                phase[i] = (q1[i] / i1[i]).atan().to_degrees();
-            }
+            let phase_val = if i1_buf[r0] != 0.0 {
+                (q1_buf[r0] / i1_buf[r0]).atan().to_degrees()
+            } else {
+                0.0
+            };
 
-            let delta_phase = phase[i.saturating_sub(1)] - phase[i];
+            let delta_phase = phase_prev - phase_val;
             let delta_phase = if delta_phase < 1.0 { 1.0 } else { delta_phase };
 
             let alpha = fastlimit / delta_phase;
@@ -133,15 +165,27 @@ pub fn mama(input: &[f64], fastlimit: f64, slowlimit: f64) -> TaResult<(Vec<f64>
 
             if i >= lookback {
                 if prev_mama == 0.0 {
-                    prev_mama = input[i];
-                    prev_fama = input[i];
+                    prev_mama = unsafe { *input.get_unchecked(i) };
+                    prev_fama = prev_mama;
                 }
-                prev_mama = alpha * input[i] + (1.0 - alpha) * prev_mama;
+                let inp_i = unsafe { *input.get_unchecked(i) };
+                prev_mama = alpha * inp_i + (1.0 - alpha) * prev_mama;
                 prev_fama = 0.5 * alpha * prev_mama + (1.0 - 0.5 * alpha) * prev_fama;
 
-                mama_out[i] = prev_mama;
-                fama_out[i] = prev_fama;
+                unsafe {
+                    *mama_out.get_unchecked_mut(i) = prev_mama;
+                    *fama_out.get_unchecked_mut(i) = prev_fama;
+                }
             }
+
+            // Update state for next iteration
+            i2_prev = i2_val;
+            q2_prev = q2_val;
+            re_prev = re_val;
+            im_prev = im_val;
+            period_prev = period_val;
+            smooth_period_prev = smooth_period_val;
+            phase_prev = phase_val;
         }
     }
 

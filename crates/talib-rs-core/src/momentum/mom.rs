@@ -20,9 +20,13 @@ pub fn mom(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         });
     }
 
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0_f64; len];
+    output[..timeperiod].fill(f64::NAN);
     for i in timeperiod..len {
-        output[i] = input[i] - input[i - timeperiod];
+        unsafe {
+            *output.get_unchecked_mut(i) =
+                *input.get_unchecked(i) - *input.get_unchecked(i - timeperiod);
+        }
     }
 
     Ok(output)

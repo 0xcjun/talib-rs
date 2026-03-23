@@ -34,8 +34,9 @@ pub fn trima(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     };
 
     // 第一次 SMA: O(n) 滑动窗口
-    let mut sma1 = vec![f64::NAN; len];
     let lookback1 = p1 - 1;
+    let mut sma1 = vec![0.0_f64; len];
+    sma1[..lookback1].fill(f64::NAN);
     let mut sum1: f64 = input[..p1].iter().sum();
     sma1[lookback1] = sum1 / p1 as f64;
     for i in p1..len {
@@ -44,8 +45,9 @@ pub fn trima(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     }
 
     // 第二次 SMA 在 sma1 的有效值上: O(n)
-    let mut output = vec![f64::NAN; len];
     let start2 = lookback1 + p2 - 1; // = p1 - 1 + p2 - 1 = timeperiod - 1
+    let mut output = vec![0.0_f64; len];
+    output[..start2.min(len)].fill(f64::NAN);
     if start2 < len {
         let mut sum2: f64 = sma1[lookback1..(lookback1 + p2)].iter().sum();
         output[start2] = sum2 / p2 as f64;

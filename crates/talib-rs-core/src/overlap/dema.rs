@@ -29,27 +29,39 @@ pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let p = timeperiod - 1; // EMA1 的 lookback
 
     // EMA1: 对 input 做 EMA，结果存入 ema1 数组
-    let mut ema1 = vec![f64::NAN; len];
+    let mut ema1 = vec![0.0_f64; len];
     let seed1 = sum_f64(&input[..timeperiod]) / timeperiod as f64;
     ema1[p] = seed1;
+    let mut ema1_prev = seed1;
     for i in timeperiod..len {
-        ema1[i] = input[i] * k + ema1[i - 1] * one_minus_k;
+        unsafe {
+            let val = *input.get_unchecked(i) * k + ema1_prev * one_minus_k;
+            *ema1.get_unchecked_mut(i) = val;
+            ema1_prev = val;
+        }
     }
 
-    // EMA2: 对 ema1[p..] 的有效值做 EMA，无需额外分配
-    // EMA2 的 SMA seed = mean(ema1[p .. p + timeperiod]) = mean(ema1[p .. 2p + 1])
+    // EMA2: 对 ema1[p..] 的有效值做 EMA
     let ema2_seed_start = p;
-    let ema2_seed_end = 2 * p + 1; // exclusive: p + timeperiod = p + p + 1 = 2p + 1
+    let ema2_seed_end = 2 * p + 1;
     let seed2 = sum_f64(&ema1[ema2_seed_start..ema2_seed_end]) / timeperiod as f64;
 
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0_f64; len];
+    // 前 lookback 个为 NaN
+    for i in 0..lookback {
+        output[i] = f64::NAN;
+    }
     let mut ema2_prev = seed2;
-    // 第一个 DEMA 输出在 index = lookback = 2*p
-    output[lookback] = 2.0 * ema1[lookback] - ema2_prev;
+    unsafe {
+        *output.get_unchecked_mut(lookback) = 2.0 * *ema1.get_unchecked(lookback) - ema2_prev;
+    }
 
     for i in (lookback + 1)..len {
-        ema2_prev = ema1[i] * k + ema2_prev * one_minus_k;
-        output[i] = 2.0 * ema1[i] - ema2_prev;
+        unsafe {
+            let e1 = *ema1.get_unchecked(i);
+            ema2_prev = e1 * k + ema2_prev * one_minus_k;
+            *output.get_unchecked_mut(i) = 2.0 * e1 - ema2_prev;
+        }
     }
 
     Ok(output)

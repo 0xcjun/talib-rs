@@ -26,8 +26,9 @@ pub fn wma(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         });
     }
 
-    let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
     let period_f = timeperiod as f64;
     let divider = period_f * (period_f + 1.0) / 2.0;
 

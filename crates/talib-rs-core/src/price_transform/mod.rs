@@ -4,9 +4,17 @@ use crate::error::{TaError, TaResult};
 pub fn avgprice(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> {
     let len = open.len();
     validate_ohlc_len(len, high, low, close)?;
-    Ok((0..len)
-        .map(|i| (open[i] + high[i] + low[i] + close[i]) / 4.0)
-        .collect())
+    let mut output = vec![0.0; len];
+    for i in 0..len {
+        unsafe {
+            *output.get_unchecked_mut(i) = (*open.get_unchecked(i)
+                + *high.get_unchecked(i)
+                + *low.get_unchecked(i)
+                + *close.get_unchecked(i))
+                / 4.0;
+        }
+    }
+    Ok(output)
 }
 
 /// Median Price: (H + L) / 2
@@ -18,7 +26,14 @@ pub fn medprice(high: &[f64], low: &[f64]) -> TaResult<Vec<f64>> {
             got: low.len(),
         });
     }
-    Ok((0..len).map(|i| (high[i] + low[i]) / 2.0).collect())
+    let mut output = vec![0.0; len];
+    for i in 0..len {
+        unsafe {
+            *output.get_unchecked_mut(i) =
+                (*high.get_unchecked(i) + *low.get_unchecked(i)) / 2.0;
+        }
+    }
+    Ok(output)
 }
 
 /// Typical Price: (H + L + C) / 3
@@ -30,9 +45,16 @@ pub fn typprice(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> 
             got: low.len().min(close.len()),
         });
     }
-    Ok((0..len)
-        .map(|i| (high[i] + low[i] + close[i]) / 3.0)
-        .collect())
+    let mut output = vec![0.0; len];
+    for i in 0..len {
+        unsafe {
+            *output.get_unchecked_mut(i) = (*high.get_unchecked(i)
+                + *low.get_unchecked(i)
+                + *close.get_unchecked(i))
+                / 3.0;
+        }
+    }
+    Ok(output)
 }
 
 /// Weighted Close Price: (H + L + 2*C) / 4
@@ -44,9 +66,16 @@ pub fn wclprice(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> 
             got: low.len().min(close.len()),
         });
     }
-    Ok((0..len)
-        .map(|i| (high[i] + low[i] + 2.0 * close[i]) / 4.0)
-        .collect())
+    let mut output = vec![0.0; len];
+    for i in 0..len {
+        unsafe {
+            *output.get_unchecked_mut(i) = (*high.get_unchecked(i)
+                + *low.get_unchecked(i)
+                + 2.0 * *close.get_unchecked(i))
+                / 4.0;
+        }
+    }
+    Ok(output)
 }
 
 fn validate_ohlc_len(len: usize, high: &[f64], low: &[f64], close: &[f64]) -> TaResult<()> {

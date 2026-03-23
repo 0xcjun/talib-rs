@@ -22,19 +22,27 @@ pub fn ema_core(input: &[f64], period: usize, k: f64) -> TaResult<Vec<f64>> {
         });
     }
 
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0; len];
     let lookback = period - 1;
 
+    // 前 lookback 个为 NaN
+    for i in 0..lookback {
+        output[i] = f64::NAN;
+    }
+
     // 初始值 = SMA(前 period 个元素)，与 TA-Lib 一致
-    let sma_seed: f64 = input[..period].iter().sum::<f64>() / period as f64;
+    let sma_seed: f64 = crate::simd::sum_f64(&input[..period]) / period as f64;
     output[lookback] = sma_seed;
 
-    // 递推 EMA
+    // 递推 EMA — 标量累加器 + unsafe 避免边界检查
+    let one_minus_k = 1.0 - k;
     let mut prev = sma_seed;
     for i in period..len {
-        let val = input[i] * k + prev * (1.0 - k);
-        output[i] = val;
-        prev = val;
+        unsafe {
+            let val = *input.get_unchecked(i) * k + prev * one_minus_k;
+            *output.get_unchecked_mut(i) = val;
+            prev = val;
+        }
     }
 
     Ok(output)

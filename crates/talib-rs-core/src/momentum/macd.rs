@@ -1,6 +1,5 @@
 use crate::error::{TaError, TaResult};
 use crate::ma_type::{compute_ma, MaType};
-use crate::overlap::ema::{ema, ema_core};
 
 /// MACD (Moving Average Convergence/Divergence)
 ///
@@ -8,6 +7,12 @@ use crate::overlap::ema::{ema, ema_core};
 /// macd_line = EMA(fast) - EMA(slow)
 /// signal = EMA(macd_line, signalperiod)
 /// histogram = macd_line - signal
+///
+/// C TA-Lib 兼容：MACD 内部的 fast/slow EMA 与独立 EMA 不同。
+/// - slow EMA seed = SMA(close[0..slowperiod])
+/// - fast EMA seed = SMA(close[slowperiod-fastperiod..slowperiod])
+/// - 两条 EMA 从 bar slowperiod 开始递推
+/// - MACD line 第一个值 (bar slowperiod-1) = fast_seed - slow_seed
 ///
 /// lookback = slowperiod - 1 + signalperiod - 1
 pub fn macd(
@@ -40,34 +45,55 @@ pub fn macd(
         });
     }
 
-    let fast_ema = ema(input, fp)?;
-    let slow_ema = ema(input, sp)?;
+    let k_fast = 2.0 / (fp as f64 + 1.0);
+    let k_slow = 2.0 / (sp as f64 + 1.0);
+    let k_signal = 2.0 / (signalperiod as f64 + 1.0);
 
-    // MACD Line
-    let macd_start = sp - 1; // slow EMA 第一个有效位置
-    let mut macd_line = vec![f64::NAN; len];
-    let mut macd_valid = Vec::with_capacity(len - macd_start);
-    for i in macd_start..len {
-        let val = fast_ema[i] - slow_ema[i];
-        macd_line[i] = val;
-        macd_valid.push(val);
+    // C TA-Lib MACD 内部 EMA 计算：
+    // slow seed = SMA(close[0..sp]), fast seed = SMA(close[sp-fp..sp])
+    let slow_seed: f64 = input[..sp].iter().sum::<f64>() / sp as f64;
+    let fast_seed: f64 = input[sp - fp..sp].iter().sum::<f64>() / fp as f64;
+
+    // MACD line: 第一个值 (对应 bar sp-1) = fast_seed - slow_seed
+    // 后续从 bar sp 开始递推
+    let mut macd_values = Vec::with_capacity(len - sp + 1);
+    macd_values.push(fast_seed - slow_seed);
+
+    let mut slow_ema = slow_seed;
+    let mut fast_ema = fast_seed;
+    for i in sp..len {
+        slow_ema = input[i] * k_slow + slow_ema * (1.0 - k_slow);
+        fast_ema = input[i] * k_fast + fast_ema * (1.0 - k_fast);
+        macd_values.push(fast_ema - slow_ema);
     }
 
-    // Signal Line = EMA(MACD Line)
-    let k = 2.0 / (signalperiod as f64 + 1.0);
-    let signal_on_valid = ema_core(&macd_valid, signalperiod, k)?;
+    // Signal line = EMA(macd_values, signalperiod)
+    // seed = SMA(macd_values[0..signalperiod])
+    let signal_seed: f64 =
+        macd_values[..signalperiod].iter().sum::<f64>() / signalperiod as f64;
 
-    // 映射回原始长度
-    let mut signal_line = vec![f64::NAN; len];
-    let mut histogram = vec![f64::NAN; len];
-    let signal_start = macd_start + signalperiod - 1;
+    // 构建输出
+    let out_start = sp - 1 + signalperiod - 1; // = lookback
+    let mut macd_line = vec![0.0_f64; len];
+    macd_line[..out_start].fill(f64::NAN);
+    let mut signal_line = vec![0.0_f64; len];
+    signal_line[..out_start].fill(f64::NAN);
+    let mut histogram = vec![0.0_f64; len];
+    histogram[..out_start].fill(f64::NAN);
 
-    for i in 0..signal_on_valid.len() {
-        let orig_idx = macd_start + i;
-        if !signal_on_valid[i].is_nan() && orig_idx < len {
-            signal_line[orig_idx] = signal_on_valid[i];
-            histogram[orig_idx] = macd_line[orig_idx] - signal_on_valid[i];
-        }
+    // signal 第一个值对应 macd_values[signalperiod-1]，即 bar out_start
+    let mut signal_ema = signal_seed;
+    let macd_at_out_start = macd_values[signalperiod - 1];
+    macd_line[out_start] = macd_at_out_start;
+    signal_line[out_start] = signal_seed;
+    histogram[out_start] = macd_at_out_start - signal_seed;
+
+    for i in signalperiod..macd_values.len() {
+        let bar = sp - 1 + i;
+        signal_ema = macd_values[i] * k_signal + signal_ema * (1.0 - k_signal);
+        macd_line[bar] = macd_values[i];
+        signal_line[bar] = signal_ema;
+        histogram[bar] = macd_values[i] - signal_ema;
     }
 
     Ok((macd_line, signal_line, histogram))
@@ -93,39 +119,100 @@ pub fn macd_ext(
     let fast_ma = compute_ma(input, fp, fastmatype)?;
     let slow_ma = compute_ma(input, sp, slowmatype)?;
 
-    let macd_start = sp - 1;
-    let mut macd_line = vec![f64::NAN; len];
+    // Collect valid MACD values (where both fast and slow MA are valid)
     let mut macd_valid = Vec::new();
-    for i in macd_start..len {
+    let mut macd_orig_indices = Vec::new();
+    for i in 0..len {
         if !fast_ma[i].is_nan() && !slow_ma[i].is_nan() {
-            let val = fast_ma[i] - slow_ma[i];
-            macd_line[i] = val;
-            macd_valid.push(val);
+            macd_valid.push(fast_ma[i] - slow_ma[i]);
+            macd_orig_indices.push(i);
         }
     }
 
     let signal_ma = compute_ma(&macd_valid, signalperiod, signalmatype)?;
 
+    // C TA-Lib: all three outputs start at the same index
+    // NB: lookback depends on MA types, not statically known — keep NaN init
+    let mut macd_line = vec![f64::NAN; len];
     let mut signal_line = vec![f64::NAN; len];
     let mut histogram = vec![f64::NAN; len];
 
-    let mut valid_idx = 0;
-    for i in macd_start..len {
-        if !macd_line[i].is_nan() {
-            if valid_idx < signal_ma.len() && !signal_ma[valid_idx].is_nan() {
-                signal_line[i] = signal_ma[valid_idx];
-                histogram[i] = macd_line[i] - signal_ma[valid_idx];
-            }
-            valid_idx += 1;
+    for (valid_idx, &orig_idx) in macd_orig_indices.iter().enumerate() {
+        if valid_idx < signal_ma.len() && !signal_ma[valid_idx].is_nan() {
+            macd_line[orig_idx] = macd_valid[valid_idx];
+            signal_line[orig_idx] = signal_ma[valid_idx];
+            histogram[orig_idx] = macd_valid[valid_idx] - signal_ma[valid_idx];
         }
     }
 
     Ok((macd_line, signal_line, histogram))
 }
 
-/// MACD Fix (26, 12, 9 固定参数)
+/// MACD Fix (12, 26 固定参数)
+///
+/// C TA-Lib MACDFIX 使用固定 k 值（k_fast=0.15, k_slow=0.075），
+/// 且采用与 MACD 相同的对齐式 EMA：
+/// - slow seed = SMA(close[0..26])
+/// - fast seed = SMA(close[14..26])  (从 slow 窗口末尾取 fast 长度)
+/// - 两条 EMA 都从 bar 26 开始递推
 pub fn macd_fix(input: &[f64], signalperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
-    macd(input, 12, 26, signalperiod)
+    let len = input.len();
+    let fp = 12usize;
+    let sp = 26usize;
+    let k_fast = 0.15;  // C TA-Lib fixed k for period 12
+    let k_slow = 0.075; // C TA-Lib fixed k for period 26
+
+    let lookback = sp - 1 + signalperiod - 1;
+    if len <= lookback {
+        return Err(TaError::InsufficientData {
+            need: lookback + 1,
+            got: len,
+        });
+    }
+
+    let k_signal = 2.0 / (signalperiod as f64 + 1.0);
+
+    // 对齐式 EMA seed (same as MACD internal):
+    let slow_seed: f64 = input[..sp].iter().sum::<f64>() / sp as f64;
+    let fast_seed: f64 = input[sp - fp..sp].iter().sum::<f64>() / fp as f64;
+
+    let mut macd_values = Vec::with_capacity(len - sp + 1);
+    macd_values.push(fast_seed - slow_seed);
+
+    let mut slow_ema = slow_seed;
+    let mut fast_ema = fast_seed;
+    for i in sp..len {
+        slow_ema = input[i] * k_slow + slow_ema * (1.0 - k_slow);
+        fast_ema = input[i] * k_fast + fast_ema * (1.0 - k_fast);
+        macd_values.push(fast_ema - slow_ema);
+    }
+
+    let signal_seed: f64 =
+        macd_values[..signalperiod].iter().sum::<f64>() / signalperiod as f64;
+
+    let out_start = sp - 1 + signalperiod - 1;
+    let mut macd_line = vec![0.0_f64; len];
+    macd_line[..out_start].fill(f64::NAN);
+    let mut signal_line = vec![0.0_f64; len];
+    signal_line[..out_start].fill(f64::NAN);
+    let mut histogram = vec![0.0_f64; len];
+    histogram[..out_start].fill(f64::NAN);
+
+    let mut sig_ema = signal_seed;
+    let macd_at_out = macd_values[signalperiod - 1];
+    macd_line[out_start] = macd_at_out;
+    signal_line[out_start] = signal_seed;
+    histogram[out_start] = macd_at_out - signal_seed;
+
+    for i in signalperiod..macd_values.len() {
+        let bar = sp - 1 + i;
+        sig_ema = macd_values[i] * k_signal + sig_ema * (1.0 - k_signal);
+        macd_line[bar] = macd_values[i];
+        signal_line[bar] = sig_ema;
+        histogram[bar] = macd_values[i] - sig_ema;
+    }
+
+    Ok((macd_line, signal_line, histogram))
 }
 
 #[cfg(test)]
@@ -136,11 +223,12 @@ mod tests {
     fn test_macd_basic() {
         let input: Vec<f64> = (1..=50).map(|x| x as f64).collect();
         let (macd_line, signal, hist) = macd(&input, 12, 26, 9).unwrap();
-        // lookback = 25 + 8 = 33
-        assert!(macd_line[24].is_nan());
-        assert!(!macd_line[25].is_nan());
-        // signal 从 25 + 8 = 33 开始
+        // C TA-Lib: all three outputs start at index slowperiod-1 + signalperiod-1 = 25+8 = 33
+        assert!(macd_line[32].is_nan());
+        assert!(!macd_line[33].is_nan());
         assert!(signal[32].is_nan());
         assert!(!signal[33].is_nan());
+        assert!(hist[32].is_nan());
+        assert!(!hist[33].is_nan());
     }
 }

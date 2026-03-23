@@ -26,9 +26,12 @@ pub fn ad(high: &[f64], low: &[f64], close: &[f64], volume: &[f64]) -> TaResult<
     Ok(output)
 }
 
-/// Chaikin A/D Oscillator (ADOSC)
+/// Chaikin A/D Oscillator (ADOSC) — 内联 AD 计算，无中间 Vec
 ///
 /// ADOSC = EMA(AD, fastperiod) - EMA(AD, slowperiod)
+///
+/// C TA-Lib 的 ADOSC 内联计算 EMA：以 ad[0] 为 seed，从 index 1 开始递推，
+/// 输出从 max(slowperiod, fastperiod) - 1 开始。这与标准 EMA (SMA seed) 不同。
 pub fn adosc(
     high: &[f64],
     low: &[f64],
@@ -37,24 +40,66 @@ pub fn adosc(
     fastperiod: usize,
     slowperiod: usize,
 ) -> TaResult<Vec<f64>> {
-    let ad_values = ad(high, low, close, volume)?;
+    let len = high.len();
+    if len != low.len() || len != close.len() || len != volume.len() {
+        return Err(TaError::LengthMismatch {
+            expected: len,
+            got: low.len().min(close.len()).min(volume.len()),
+        });
+    }
+    let lookback = slowperiod.max(fastperiod) - 1;
 
-    use crate::overlap::ema;
-    let fast = ema(&ad_values, fastperiod)?;
-    let slow = ema(&ad_values, slowperiod)?;
+    if len <= lookback {
+        return Err(TaError::InsufficientData {
+            need: lookback + 1,
+            got: len,
+        });
+    }
 
-    let len = ad_values.len();
-    let mut output = vec![f64::NAN; len];
-    for i in 0..len {
-        if !fast[i].is_nan() && !slow[i].is_nan() {
-            output[i] = fast[i] - slow[i];
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
+    let fast_k = 2.0 / (fastperiod as f64 + 1.0);
+    let slow_k = 2.0 / (slowperiod as f64 + 1.0);
+    let fast_k1 = 1.0 - fast_k;
+    let slow_k1 = 1.0 - slow_k;
+
+    // 内联 AD[0] 计算
+    let hl0 = high[0] - low[0];
+    let ad0 = if hl0 > 0.0 {
+        ((close[0] - low[0]) - (high[0] - close[0])) / hl0 * volume[0]
+    } else {
+        0.0
+    };
+
+    let mut ad_val = ad0;
+    let mut fast_ema = ad0;
+    let mut slow_ema = ad0;
+
+    for i in 1..len {
+        unsafe {
+            let h = *high.get_unchecked(i);
+            let l = *low.get_unchecked(i);
+            let c = *close.get_unchecked(i);
+            let v = *volume.get_unchecked(i);
+            let hl = h - l;
+            let clv = if hl > 0.0 {
+                ((c - l) - (h - c)) / hl
+            } else {
+                0.0
+            };
+            ad_val += clv * v;
+            fast_ema = ad_val * fast_k + fast_ema * fast_k1;
+            slow_ema = ad_val * slow_k + slow_ema * slow_k1;
+            if i >= lookback {
+                *output.get_unchecked_mut(i) = fast_ema - slow_ema;
+            }
         }
     }
 
     Ok(output)
 }
 
-/// On Balance Volume (OBV)
+/// On Balance Volume (OBV) — 标量累加器，无数组依赖
 pub fn obv(close: &[f64], volume: &[f64]) -> TaResult<Vec<f64>> {
     let len = close.len();
     if len != volume.len() {
@@ -68,14 +113,19 @@ pub fn obv(close: &[f64], volume: &[f64]) -> TaResult<Vec<f64>> {
     }
 
     let mut output = vec![0.0; len];
-    output[0] = volume[0];
+    let mut acc = unsafe { *volume.get_unchecked(0) };
+    output[0] = acc;
     for i in 1..len {
-        if close[i] > close[i - 1] {
-            output[i] = output[i - 1] + volume[i];
-        } else if close[i] < close[i - 1] {
-            output[i] = output[i - 1] - volume[i];
-        } else {
-            output[i] = output[i - 1];
+        unsafe {
+            let c = *close.get_unchecked(i);
+            let pc = *close.get_unchecked(i - 1);
+            let v = *volume.get_unchecked(i);
+            if c > pc {
+                acc += v;
+            } else if c < pc {
+                acc -= v;
+            }
+            *output.get_unchecked_mut(i) = acc;
         }
     }
 

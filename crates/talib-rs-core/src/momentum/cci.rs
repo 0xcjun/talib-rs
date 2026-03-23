@@ -4,6 +4,9 @@ use crate::error::{TaError, TaResult};
 ///
 /// CCI = (TP - SMA(TP)) / (0.015 * Mean Deviation)
 /// TP (Typical Price) = (High + Low + Close) / 3
+///
+/// Faithful port of C TA-Lib ta_CCI.c: uses circular buffer and recomputes
+/// average + mean deviation from scratch each bar (avoids floating point drift).
 /// lookback = timeperiod - 1
 pub fn cci(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let len = high.len();
@@ -28,23 +31,51 @@ pub fn cci(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaRes
         });
     }
 
-    // 计算 Typical Price
-    let tp: Vec<f64> = (0..len)
-        .map(|i| (high[i] + low[i] + close[i]) / 3.0)
-        .collect();
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
 
-    let mut output = vec![f64::NAN; len];
+    // Circular buffer matching C TA-Lib
+    let mut circ_buf = vec![0.0_f64; timeperiod];
+    let mut circ_idx: usize = 0;
 
+    // Fill initial circular buffer
+    for i in 0..timeperiod {
+        circ_buf[i] = (high[i] + low[i] + close[i]) / 3.0;
+    }
+    circ_idx = timeperiod - 1;
+
+    // Process from lookback onwards
     for i in lookback..len {
-        let start = i + 1 - timeperiod;
-        let mean: f64 = tp[start..=i].iter().sum::<f64>() / timeperiod as f64;
-        let mean_dev: f64 =
-            tp[start..=i].iter().map(|v| (v - mean).abs()).sum::<f64>() / timeperiod as f64;
+        // Store current TP in circular buffer
+        let last_value = (high[i] + low[i] + close[i]) / 3.0;
+        circ_buf[circ_idx] = last_value;
+
+        // Recompute average from circular buffer (no running sum, matches C TA-Lib)
+        let mut the_average = 0.0_f64;
+        for j in 0..timeperiod {
+            the_average += circ_buf[j];
+        }
+        the_average /= timeperiod as f64;
+
+        // Recompute mean deviation from circular buffer
+        let mut temp_real2 = 0.0_f64;
+        for j in 0..timeperiod {
+            temp_real2 += (circ_buf[j] - the_average).abs();
+        }
+
+        let temp_real = last_value - the_average;
+        let mean_dev = temp_real2 / timeperiod as f64;
 
         if mean_dev > 0.0 {
-            output[i] = (tp[i] - mean) / (0.015 * mean_dev);
+            output[i] = temp_real / (0.015 * mean_dev);
         } else {
             output[i] = 0.0;
+        }
+
+        // Advance circular buffer index
+        circ_idx += 1;
+        if circ_idx >= timeperiod {
+            circ_idx = 0;
         }
     }
 

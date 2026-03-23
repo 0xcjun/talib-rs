@@ -33,7 +33,8 @@ pub fn mavp(
         });
     }
 
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0_f64; len];
+    output[..(maxperiod - 1).min(len)].fill(f64::NAN);
 
     // 对每个位置，使用指定周期计算 MA
     for i in (maxperiod - 1)..len {

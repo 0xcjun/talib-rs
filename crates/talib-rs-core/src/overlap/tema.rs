@@ -7,7 +7,7 @@ use crate::simd::sum_f64;
 /// 其中 EMA1 = EMA(input), EMA2 = EMA(EMA1), EMA3 = EMA(EMA2)
 /// lookback = 3 * (timeperiod - 1)
 ///
-/// 优化版本：三次 EMA 在原地计算，无需中间 Vec 分配。
+/// 优化版本：三层 EMA 标量级联，仅 1 个输出 Vec，无中间分配。
 pub fn tema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     if timeperiod < 2 {
         return Err(TaError::InvalidParameter {
@@ -28,36 +28,42 @@ pub fn tema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let k = 2.0 / (timeperiod as f64 + 1.0);
     let one_minus_k = 1.0 - k;
     let p = timeperiod - 1;
+    let tp = timeperiod as f64;
 
-    // EMA1: 对 input 做 EMA
-    let mut ema1 = vec![f64::NAN; len];
-    let seed1 = sum_f64(&input[..timeperiod]) / timeperiod as f64;
-    ema1[p] = seed1;
-    for i in timeperiod..len {
-        ema1[i] = input[i] * k + ema1[i - 1] * one_minus_k;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
+
+    // Phase 1: Build EMA1, indices [p .. 2p]. Accumulate SMA for EMA2 seed.
+    let seed1 = sum_f64(&input[..timeperiod]) / tp;
+    let mut e1 = seed1;
+    let mut sum2 = seed1;
+    for i in timeperiod..(2 * p + 1) {
+        e1 = input[i] * k + e1 * one_minus_k;
+        sum2 += e1;
     }
 
-    // EMA2: 对 ema1[p..] 做 EMA，有效值从 index p 开始
-    // seed2 = SMA(ema1[p .. p + timeperiod]) = SMA(ema1[p .. 2p + 1])
-    let mut ema2 = vec![f64::NAN; len];
-    let seed2 = sum_f64(&ema1[p..(2 * p + 1)]) / timeperiod as f64;
-    ema2[2 * p] = seed2;
-    for i in (2 * p + 1)..len {
-        ema2[i] = ema1[i] * k + ema2[i - 1] * one_minus_k;
+    // Phase 2: Build EMA2, indices [2p .. 3p]. Accumulate SMA for EMA3 seed.
+    let seed2 = sum2 / tp;
+    let mut e2 = seed2;
+    let mut sum3 = seed2;
+    for i in (2 * p + 1)..(3 * p + 1) {
+        e1 = input[i] * k + e1 * one_minus_k;
+        e2 = e1 * k + e2 * one_minus_k;
+        sum3 += e2;
     }
 
-    // EMA3: 对 ema2[2p..] 做 EMA，有效值从 index 2p 开始
-    // seed3 = SMA(ema2[2p .. 2p + timeperiod]) = SMA(ema2[2p .. 3p + 1])
-    let seed3 = sum_f64(&ema2[(2 * p)..(3 * p + 1)]) / timeperiod as f64;
+    // Phase 3: EMA3 seed ready at index 3*p = lookback.
+    let seed3 = sum3 / tp;
+    let mut e3 = seed3;
+    // First output: TEMA = 3*e1 - 3*e2 + e3
+    output[lookback] = 3.0 * e1 - 3.0 * e2 + e3;
 
-    let mut output = vec![f64::NAN; len];
-    let mut ema3_prev = seed3;
-    // 第一个 TEMA 输出在 index = lookback = 3*p
-    output[lookback] = 3.0 * ema1[lookback] - 3.0 * ema2[lookback] + ema3_prev;
-
+    // Steady state: cascade all 3 EMA layers
     for i in (lookback + 1)..len {
-        ema3_prev = ema2[i] * k + ema3_prev * one_minus_k;
-        output[i] = 3.0 * ema1[i] - 3.0 * ema2[i] + ema3_prev;
+        e1 = input[i] * k + e1 * one_minus_k;
+        e2 = e1 * k + e2 * one_minus_k;
+        e3 = e2 * k + e3 * one_minus_k;
+        output[i] = 3.0 * e1 - 3.0 * e2 + e3;
     }
 
     Ok(output)
@@ -74,5 +80,45 @@ mod tests {
         // lookback = 3*(5-1) = 12
         assert!(result[11].is_nan());
         assert!(!result[12].is_nan());
+    }
+
+    /// Verify optimized output matches original Vec-based implementation bit-for-bit.
+    #[test]
+    fn test_tema_numerical_equivalence() {
+        fn tema_reference(input: &[f64], timeperiod: usize) -> Vec<f64> {
+            let len = input.len();
+            let k = 2.0 / (timeperiod as f64 + 1.0);
+            let one_minus_k = 1.0 - k;
+            let p = timeperiod - 1;
+            let mut ema1 = vec![0.0_f64; len];
+            ema1[..p].fill(f64::NAN);
+            let seed1: f64 = input[..timeperiod].iter().sum::<f64>() / timeperiod as f64;
+            ema1[p] = seed1;
+            for i in timeperiod..len { ema1[i] = input[i] * k + ema1[i-1] * one_minus_k; }
+            let mut ema2 = vec![0.0_f64; len];
+            ema2[..(2*p)].fill(f64::NAN);
+            let seed2: f64 = ema1[p..(2*p+1)].iter().sum::<f64>() / timeperiod as f64;
+            ema2[2*p] = seed2;
+            for i in (2*p+1)..len { ema2[i] = ema1[i] * k + ema2[i-1] * one_minus_k; }
+            let seed3: f64 = ema2[(2*p)..(3*p+1)].iter().sum::<f64>() / timeperiod as f64;
+            let mut output = vec![0.0_f64; len];
+            output[..(3*p)].fill(f64::NAN);
+            let mut e3 = seed3;
+            let lookback = 3 * p;
+            output[lookback] = 3.0 * ema1[lookback] - 3.0 * ema2[lookback] + e3;
+            for i in (lookback+1)..len { e3 = ema2[i] * k + e3 * one_minus_k; output[i] = 3.0 * ema1[i] - 3.0 * ema2[i] + e3; }
+            output
+        }
+        for period in [2, 3, 5, 10] {
+            let input: Vec<f64> = (1..=100).map(|x| (x as f64) * 1.1 + 0.3).collect();
+            let opt = tema(&input, period).unwrap();
+            let reference = tema_reference(&input, period);
+            for i in 0..input.len() {
+                assert!(
+                    (opt[i].is_nan() && reference[i].is_nan()) || opt[i] == reference[i],
+                    "Mismatch at index {} for period {}: opt={} ref={}", i, period, opt[i], reference[i]
+                );
+            }
+        }
     }
 }

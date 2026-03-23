@@ -1,28 +1,159 @@
 use crate::error::{TaError, TaResult};
 
-/// Parabolic SAR
+/// Parabolic SAR — 与 C TA-Lib 完全一致的实现
 ///
 /// acceleration 默认 0.02, maximum 默认 0.2
 /// lookback = 1
 pub fn sar(high: &[f64], low: &[f64], acceleration: f64, maximum: f64) -> TaResult<Vec<f64>> {
-    // SAR 是 SAREXT 的特殊情况: long/short 使用相同参数
-    sar_ext(
-        high,
-        low,
-        0.0,
-        0.0,
-        acceleration,
-        acceleration,
-        maximum,
-        acceleration,
-        acceleration,
-        maximum,
-    )
+    let len = high.len();
+    if len != low.len() {
+        return Err(TaError::LengthMismatch {
+            expected: len,
+            got: low.len(),
+        });
+    }
+    if len < 2 {
+        return Err(TaError::InsufficientData { need: 2, got: len });
+    }
+
+    let mut output = vec![0.0_f64; len];
+    output[0] = f64::NAN; // lookback = 1
+
+    // 方向判断: 使用 MINUS_DM 逻辑
+    let diff_m = low[0] - low[1];
+    let diff_p = high[1] - high[0];
+    let is_long_init = !(diff_m > 0.0 && diff_m > diff_p);
+
+    let mut is_long = is_long_init;
+    let mut sar_val: f64;
+    let mut ep: f64;
+    let mut af = acceleration;
+
+    if is_long {
+        ep = high[1];
+        sar_val = low[0];
+    } else {
+        ep = low[1];
+        sar_val = high[0];
+    }
+
+    let mut prev_low = low[1];
+    let mut prev_high = high[1];
+
+    for i in 1..len {
+        let new_low;
+        let new_high;
+        unsafe {
+            new_low = *low.get_unchecked(i);
+            new_high = *high.get_unchecked(i);
+            // For i==1, prev stays as initialized (low[1]/high[1] = current bar)
+            // For i>1, update to previous bar
+            if i > 1 {
+                prev_low = *low.get_unchecked(i - 1);
+                prev_high = *high.get_unchecked(i - 1);
+            }
+        }
+
+        if is_long {
+            if new_low <= sar_val {
+                is_long = false;
+                sar_val = ep;
+
+                if sar_val < prev_high {
+                    sar_val = prev_high;
+                }
+                if sar_val < new_high {
+                    sar_val = new_high;
+                }
+
+                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+
+                af = acceleration;
+                ep = new_low;
+
+                sar_val = sar_val + af * (ep - sar_val);
+
+                if sar_val < prev_high {
+                    sar_val = prev_high;
+                }
+                if sar_val < new_high {
+                    sar_val = new_high;
+                }
+            } else {
+                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+
+                if new_high > ep {
+                    ep = new_high;
+                    af += acceleration;
+                    if af > maximum {
+                        af = maximum;
+                    }
+                }
+
+                sar_val = sar_val + af * (ep - sar_val);
+
+                if sar_val > prev_low {
+                    sar_val = prev_low;
+                }
+                if sar_val > new_low {
+                    sar_val = new_low;
+                }
+            }
+        } else {
+            if new_high >= sar_val {
+                is_long = true;
+                sar_val = ep;
+
+                if sar_val > prev_low {
+                    sar_val = prev_low;
+                }
+                if sar_val > new_low {
+                    sar_val = new_low;
+                }
+
+                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+
+                af = acceleration;
+                ep = new_high;
+
+                sar_val = sar_val + af * (ep - sar_val);
+
+                if sar_val > prev_low {
+                    sar_val = prev_low;
+                }
+                if sar_val > new_low {
+                    sar_val = new_low;
+                }
+            } else {
+                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+
+                if new_low < ep {
+                    ep = new_low;
+                    af += acceleration;
+                    if af > maximum {
+                        af = maximum;
+                    }
+                }
+
+                sar_val = sar_val + af * (ep - sar_val);
+
+                if sar_val < prev_high {
+                    sar_val = prev_high;
+                }
+                if sar_val < new_high {
+                    sar_val = new_high;
+                }
+            }
+        }
+    }
+
+    Ok(output)
 }
 
-/// Parabolic SAR Extended — 完整实现，与 C TA-Lib 一致
+/// Parabolic SAR Extended — 与 C TA-Lib SAREXT 完全一致
 ///
 /// 支持多空不同加速因子、startvalue 指定初始方向、offsetonreverse 反转偏移。
+/// 输出: 正值 = 多头 SAR, 负值 = 空头 SAR
 /// lookback = 1
 pub fn sar_ext(
     high: &[f64],
@@ -47,96 +178,154 @@ pub fn sar_ext(
         return Err(TaError::InsufficientData { need: 2, got: len });
     }
 
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0_f64; len];
+    output[0] = f64::NAN; // lookback = 1
 
-    // 初始方向和 SAR 值
     let mut is_long: bool;
     let mut sar_val: f64;
     let mut ep: f64;
-    let mut af: f64;
+    let mut af_long: f64;
+    let mut af_short: f64;
 
-    if startvalue > 0.0 {
-        // 强制多头起始，SAR = startvalue
-        is_long = true;
-        sar_val = startvalue;
-        ep = high[0];
-        af = accelerationinitlong;
-    } else if startvalue < 0.0 {
-        // 强制空头起始，SAR = |startvalue|
-        is_long = false;
-        sar_val = startvalue.abs();
-        ep = low[0];
-        af = accelerationinitshort;
+    if startvalue == 0.0 {
+        let diff_m = low[0] - low[1];
+        let diff_p = high[1] - high[0];
+        is_long = !(diff_m > 0.0 && diff_m > diff_p);
     } else {
-        // startvalue == 0: 自动判断初始方向（与 C TA-Lib 一致）
-        // 使用前几根 K 线的方向性运动来判断
-        if high[1] > high[0] {
-            is_long = true;
-            ep = high[0];
-            sar_val = low[0];
-            af = accelerationinitlong;
-        } else {
-            is_long = false;
-            ep = low[0];
-            sar_val = high[0];
-            af = accelerationinitshort;
-        }
+        is_long = startvalue > 0.0;
     }
 
-    output[0] = sar_val;
+    if startvalue == 0.0 {
+        if is_long {
+            ep = high[1];
+            sar_val = low[0];
+        } else {
+            ep = low[1];
+            sar_val = high[0];
+        }
+    } else if startvalue > 0.0 {
+        ep = high[1];
+        sar_val = startvalue;
+    } else {
+        ep = low[1];
+        sar_val = startvalue.abs();
+    }
+
+    af_long = accelerationinitlong;
+    af_short = accelerationinitshort;
+
+    let mut prev_low = low[1];
+    let mut prev_high = high[1];
 
     for i in 1..len {
-        if is_long {
-            if low[i] < sar_val {
-                // 多头反转为空头
-                is_long = false;
-                // 反转时 SAR = 之前的极值点
-                sar_val = ep;
-                // 应用 offsetonreverse
-                if offsetonreverse > 0.0 {
-                    sar_val += sar_val * offsetonreverse;
-                }
-                ep = low[i];
-                af = accelerationinitshort; // 重置为空头初始加速因子
-            } else {
-                if high[i] > ep {
-                    ep = high[i];
-                    af = (af + accelerationlong).min(accelerationmaxlong);
-                }
-            }
-        } else {
-            if high[i] > sar_val {
-                // 空头反转为多头
-                is_long = true;
-                sar_val = ep;
-                if offsetonreverse > 0.0 {
-                    sar_val -= sar_val * offsetonreverse;
-                }
-                ep = high[i];
-                af = accelerationinitlong; // 重置为多头初始加速因子
-            } else {
-                if low[i] < ep {
-                    ep = low[i];
-                    af = (af + accelerationshort).min(accelerationmaxshort);
-                }
+        let new_low;
+        let new_high;
+        unsafe {
+            new_low = *low.get_unchecked(i);
+            new_high = *high.get_unchecked(i);
+            if i > 1 {
+                prev_low = *low.get_unchecked(i - 1);
+                prev_high = *high.get_unchecked(i - 1);
             }
         }
 
-        output[i] = sar_val;
-
-        // 更新 SAR
-        sar_val = sar_val + af * (ep - sar_val);
-
-        // SAR 不能超过前两根 K 线的范围
         if is_long {
-            sar_val = sar_val.min(low[i]);
-            if i > 0 {
-                sar_val = sar_val.min(low[i - 1]);
+            if new_low <= sar_val {
+                is_long = false;
+                sar_val = ep;
+
+                if sar_val < prev_high {
+                    sar_val = prev_high;
+                }
+                if sar_val < new_high {
+                    sar_val = new_high;
+                }
+
+                if offsetonreverse != 0.0 {
+                    sar_val += sar_val * offsetonreverse;
+                }
+
+                unsafe { *output.get_unchecked_mut(i) = -sar_val; }
+
+                af_short = accelerationinitshort;
+                ep = new_low;
+
+                sar_val = sar_val + af_short * (ep - sar_val);
+
+                if sar_val < prev_high {
+                    sar_val = prev_high;
+                }
+                if sar_val < new_high {
+                    sar_val = new_high;
+                }
+            } else {
+                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+
+                if new_high > ep {
+                    ep = new_high;
+                    af_long += accelerationlong;
+                    if af_long > accelerationmaxlong {
+                        af_long = accelerationmaxlong;
+                    }
+                }
+
+                sar_val = sar_val + af_long * (ep - sar_val);
+
+                if sar_val > prev_low {
+                    sar_val = prev_low;
+                }
+                if sar_val > new_low {
+                    sar_val = new_low;
+                }
             }
         } else {
-            sar_val = sar_val.max(high[i]);
-            if i > 0 {
-                sar_val = sar_val.max(high[i - 1]);
+            if new_high >= sar_val {
+                is_long = true;
+                sar_val = ep;
+
+                if sar_val > prev_low {
+                    sar_val = prev_low;
+                }
+                if sar_val > new_low {
+                    sar_val = new_low;
+                }
+
+                if offsetonreverse != 0.0 {
+                    sar_val -= sar_val * offsetonreverse;
+                }
+
+                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+
+                af_long = accelerationinitlong;
+                ep = new_high;
+
+                sar_val = sar_val + af_long * (ep - sar_val);
+
+                if sar_val > prev_low {
+                    sar_val = prev_low;
+                }
+                if sar_val > new_low {
+                    sar_val = new_low;
+                }
+            } else {
+                unsafe { *output.get_unchecked_mut(i) = -sar_val; }
+
+                if new_low < ep {
+                    ep = new_low;
+                    af_short += accelerationshort;
+                    if af_short > accelerationmaxshort {
+                        af_short = accelerationmaxshort;
+                    }
+                }
+
+                sar_val = sar_val + af_short * (ep - sar_val);
+
+                if sar_val < prev_high {
+                    sar_val = prev_high;
+                }
+                if sar_val < new_high {
+                    sar_val = new_high;
+                }
             }
         }
     }
@@ -154,7 +343,27 @@ mod tests {
         let low = vec![9.0, 9.5, 10.0, 10.0, 11.0, 10.5, 9.5, 9.0, 8.5, 8.0];
         let result = sar(&high, &low, 0.02, 0.2).unwrap();
         assert_eq!(result.len(), 10);
-        assert!(!result[0].is_nan());
+        assert!(result[0].is_nan()); // C TA-Lib lookback = 1
+        assert!(!result[1].is_nan());
+    }
+
+    #[test]
+    fn test_sar_updates_across_bars() {
+        let high = vec![10.0, 11.0, 12.0, 13.0, 14.0];
+        let low = vec![9.0, 9.5, 10.0, 10.5, 11.0];
+        let result = sar(&high, &low, 0.02, 0.2).unwrap();
+        assert!(result[2] > result[1], "SAR should increase in uptrend");
+        assert!(result[3] > result[2], "SAR should keep increasing");
+    }
+
+    #[test]
+    fn test_sar_ext_sign_convention() {
+        let high = vec![10.0, 11.0, 12.0, 13.0, 14.0];
+        let low = vec![9.0, 9.5, 10.0, 10.5, 11.0];
+        let result = sar_ext(&high, &low, 0.0, 0.0, 0.02, 0.02, 0.2, 0.02, 0.02, 0.2).unwrap();
+        for i in 1..result.len() {
+            assert!(result[i] > 0.0, "Long SAR should be positive at index {}", i);
+        }
     }
 
     #[test]
@@ -163,14 +372,12 @@ mod tests {
         let low = vec![9.0, 10.0, 11.0, 10.0, 9.0, 8.0, 7.0, 8.0, 9.0, 10.0];
         let r1 = sar_ext(&high, &low, 0.0, 0.0, 0.02, 0.02, 0.2, 0.02, 0.02, 0.2).unwrap();
         let r2 = sar_ext(&high, &low, 0.0, 0.0, 0.04, 0.04, 0.4, 0.02, 0.02, 0.2).unwrap();
-        // 改变 long 参数应该产生不同结果
         let diff: f64 = r1
             .iter()
             .zip(r2.iter())
             .filter(|(a, b)| !a.is_nan() && !b.is_nan())
             .map(|(a, b)| (a - b).abs())
             .sum();
-        // diff 可能在某些数据集上为 0，这里只确保计算没有 panic
         let _ = diff;
     }
 }

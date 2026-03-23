@@ -40,53 +40,68 @@ pub fn stoch(
         });
     }
 
-    // 计算 FastK
-    let mut fastk = Vec::with_capacity(len - (fastk_period - 1));
+    // 计算 FastK with unsafe array access
+    let fastk_len = len - (fastk_period - 1);
+    let mut fastk = Vec::with_capacity(fastk_len);
     for i in (fastk_period - 1)..len {
         let start = i + 1 - fastk_period;
         let mut hh = f64::NEG_INFINITY;
         let mut ll = f64::INFINITY;
-        for j in start..=i {
-            if high[j] > hh {
-                hh = high[j];
-            }
-            if low[j] < ll {
-                ll = low[j];
+        unsafe {
+            for j in start..=i {
+                let h = *high.get_unchecked(j);
+                let l = *low.get_unchecked(j);
+                if h > hh { hh = h; }
+                if l < ll { ll = l; }
             }
         }
         let range = hh - ll;
         if range > 0.0 {
-            fastk.push(100.0 * (close[i] - ll) / range);
+            fastk.push(100.0 * (unsafe { *close.get_unchecked(i) } - ll) / range);
         } else {
-            fastk.push(50.0); // TA-Lib 当 range=0 时返回 50
+            fastk.push(50.0);
         }
     }
 
     // SlowK = MA(FastK)
     let slowk_arr = compute_ma(&fastk, slowk_period, slowk_matype)?;
-    let slowk_valid: Vec<f64> = slowk_arr.iter().copied().filter(|v| !v.is_nan()).collect();
 
-    // SlowD = MA(SlowK)
-    let slowd_arr = compute_ma(&slowk_valid, slowd_period, slowd_matype)?;
+    // Extract valid (non-NaN) slowK values without allocating a new Vec
+    // The NaN prefix has length (slowk_period - 1)
+    let k_nan_prefix = slowk_period - 1;
+    let slowk_valid = &slowk_arr[k_nan_prefix..];
+
+    // SlowD = MA(SlowK valid values)
+    let slowd_arr = compute_ma(slowk_valid, slowd_period, slowd_matype)?;
 
     // 映射到原始长度
-    let mut slowk_out = vec![f64::NAN; len];
-    let mut slowd_out = vec![f64::NAN; len];
+    let mut slowk_out = vec![0.0_f64; len];
+    let mut slowd_out = vec![0.0_f64; len];
 
-    let k_start = fastk_period - 1 + slowk_period - 1;
-    for (j, i) in (k_start..len).enumerate() {
-        if j < slowk_valid.len() {
-            slowk_out[i] = slowk_valid[j];
+    let aligned_start = fastk_period - 1 + slowk_period - 1 + slowd_period - 1;
+    slowk_out[..aligned_start.min(len)].fill(f64::NAN);
+    slowd_out[..aligned_start.min(len)].fill(f64::NAN);
+
+    // slowK: skip first (slowd_period - 1) valid values to align with slowD
+    let k_skip = slowd_period - 1;
+    for (j, i) in (aligned_start..len).enumerate() {
+        let idx = k_skip + j;
+        if idx < slowk_valid.len() {
+            unsafe {
+                *slowk_out.get_unchecked_mut(i) = *slowk_valid.get_unchecked(idx);
+            }
         }
     }
 
-    let d_start = k_start + slowd_period - 1;
-    let mut d_idx = 0;
-    for i in d_start..len {
-        if d_idx < slowd_arr.len() && !slowd_arr[d_idx].is_nan() {
-            slowd_out[i] = slowd_arr[d_idx];
+    // slowD: skip NaN prefix in slowd_arr (first slowd_period - 1 entries)
+    let d_skip = slowd_period - 1;
+    for (j, i) in (aligned_start..len).enumerate() {
+        let idx = d_skip + j;
+        if idx < slowd_arr.len() {
+            unsafe {
+                *slowd_out.get_unchecked_mut(i) = *slowd_arr.get_unchecked(idx);
+            }
         }
-        d_idx += 1;
     }
 
     Ok((slowk_out, slowd_out))
@@ -124,36 +139,48 @@ pub fn stochf(
         let start = i + 1 - fastk_period;
         let mut hh = f64::NEG_INFINITY;
         let mut ll = f64::INFINITY;
-        for j in start..=i {
-            if high[j] > hh {
-                hh = high[j];
-            }
-            if low[j] < ll {
-                ll = low[j];
+        unsafe {
+            for j in start..=i {
+                let h = *high.get_unchecked(j);
+                let l = *low.get_unchecked(j);
+                if h > hh { hh = h; }
+                if l < ll { ll = l; }
             }
         }
         let range = hh - ll;
         if range > 0.0 {
-            fastk_values.push(100.0 * (close[i] - ll) / range);
+            fastk_values.push(100.0 * (unsafe { *close.get_unchecked(i) } - ll) / range);
         } else {
             fastk_values.push(50.0);
         }
     }
 
-    let mut fastk_out = vec![f64::NAN; len];
-    for (j, i) in ((fastk_period - 1)..len).enumerate() {
-        fastk_out[i] = fastk_values[j];
+    let fastd_arr = compute_ma(&fastk_values, fastd_period, fastd_matype)?;
+
+    let mut fastk_out = vec![0.0_f64; len];
+    let mut fastd_out = vec![0.0_f64; len];
+    let aligned_start = fastk_period - 1 + fastd_period - 1;
+    fastk_out[..aligned_start.min(len)].fill(f64::NAN);
+    fastd_out[..aligned_start.min(len)].fill(f64::NAN);
+
+    let k_skip = fastd_period - 1;
+    for (j, i) in (aligned_start..len).enumerate() {
+        let idx = k_skip + j;
+        if idx < fastk_values.len() {
+            unsafe {
+                *fastk_out.get_unchecked_mut(i) = *fastk_values.get_unchecked(idx);
+            }
+        }
     }
 
-    let fastd_arr = compute_ma(&fastk_values, fastd_period, fastd_matype)?;
-    let mut fastd_out = vec![f64::NAN; len];
-    let d_start = fastk_period - 1 + fastd_period - 1;
-    let mut d_idx = fastd_period - 1;
-    for i in d_start..len {
-        if d_idx < fastd_arr.len() {
-            fastd_out[i] = fastd_arr[d_idx];
+    let d_skip = fastd_period - 1;
+    for (j, i) in (aligned_start..len).enumerate() {
+        let idx = d_skip + j;
+        if idx < fastd_arr.len() {
+            unsafe {
+                *fastd_out.get_unchecked_mut(i) = *fastd_arr.get_unchecked(idx);
+            }
         }
-        d_idx += 1;
     }
 
     Ok((fastk_out, fastd_out))
@@ -209,10 +236,13 @@ pub fn stochrsi(
 
     // 映射到原始长度
     let len = input.len();
-    let mut fastk_out = vec![f64::NAN; len];
-    let mut fastd_out = vec![f64::NAN; len];
-
     let k_start = timeperiod + fastk_period - 1;
+    let d_start = k_start + fastd_period - 1;
+    let mut fastk_out = vec![0.0_f64; len];
+    fastk_out[..k_start.min(len)].fill(f64::NAN);
+    let mut fastd_out = vec![0.0_f64; len];
+    fastd_out[..d_start.min(len)].fill(f64::NAN);
+
     for (j, i) in (k_start..len).enumerate() {
         if j < fastk_values.len() {
             fastk_out[i] = fastk_values[j];

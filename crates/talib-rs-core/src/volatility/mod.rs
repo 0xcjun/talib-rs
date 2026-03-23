@@ -10,10 +10,15 @@ pub fn true_range_array(high: &[f64], low: &[f64], close: &[f64]) -> Vec<f64> {
         tr[0] = high[0] - low[0];
     }
     for i in 1..len {
-        let hl = high[i] - low[i];
-        let hc = (high[i] - close[i - 1]).abs();
-        let lc = (low[i] - close[i - 1]).abs();
-        tr[i] = hl.max(hc).max(lc);
+        unsafe {
+            let h = *high.get_unchecked(i);
+            let l = *low.get_unchecked(i);
+            let pc = *close.get_unchecked(i - 1);
+            let hl = h - l;
+            let hc = (h - pc).abs();
+            let lc = (l - pc).abs();
+            *tr.get_unchecked_mut(i) = hl.max(hc).max(lc);
+        }
     }
     tr
 }

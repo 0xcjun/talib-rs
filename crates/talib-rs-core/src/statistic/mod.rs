@@ -6,8 +6,9 @@ use crate::error::{TaError, TaResult};
 /// 维护 sum 和 sum_sq 的滑动窗口，每步 O(1)。
 pub fn stddev(input: &[f64], timeperiod: usize, nbdev: f64) -> TaResult<Vec<f64>> {
     let var_result = var_internal(input, timeperiod)?;
-    let mut output = vec![f64::NAN; input.len()];
     let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; input.len()];
+    output[..lookback].fill(f64::NAN);
     for i in lookback..input.len() {
         output[i] = var_result[i].max(0.0).sqrt() * nbdev;
     }
@@ -36,8 +37,9 @@ fn var_internal(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         });
     }
 
-    let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
     let n = timeperiod as f64;
 
     // 初始窗口的 sum 和 sum_sq
@@ -64,8 +66,14 @@ fn var_internal(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 
 /// Beta — O(n) 滑动窗口算法
 ///
-/// 使用恒等式: beta = (n*sxy - sx*sy) / (n*sxx - sx*sx)
-/// 维护 sx, sy, sxx, sxy 四个滑动和，每步 O(1)。
+/// C TA-Lib BETA 使用百分比收益率:
+///   x[i] = (input0[i] - input0[i-1]) / input0[i-1]  (input0 的百分比收益)
+///   y[i] = (input1[i] - input1[i-1]) / input1[i-1]  (input1 的百分比收益)
+///   beta = (n*sxy - sx*sy) / (n*sxx - sx*sx)
+///
+/// 其中 input0 为基准 (market)，input1 为标的 (stock)，
+/// 分母是 var(x)=var(input0 的收益率)。
+/// lookback = timeperiod
 pub fn beta(input0: &[f64], input1: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let len = input0.len();
     if len != input1.len() {
@@ -80,39 +88,68 @@ pub fn beta(input0: &[f64], input1: &[f64], timeperiod: usize) -> TaResult<Vec<f
             got: len,
         });
     }
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0_f64; len];
+    output[..timeperiod].fill(f64::NAN);
     let n = timeperiod as f64;
 
-    // 初始化第一个窗口 [1..=timeperiod] 的滑动求和
-    let init_x = &input0[1..=timeperiod];
-    let init_y = &input1[1..=timeperiod];
-    let mut sx = crate::simd::sum_f64(init_x);
-    let mut sy = crate::simd::sum_f64(init_y);
-    let mut sxx: f64 = init_x.iter().map(|&v| v * v).sum();
-    let mut sxy: f64 = init_x.iter().zip(init_y.iter()).map(|(&x, &y)| x * y).sum();
+    // 预计算百分比收益率（一次分配，避免每个窗口重复除法）
+    // rx[i] 对应原始 index i+1 的收益率 (即 rx[i] = (input0[i+1]-input0[i])/input0[i])
+    // 收益率序列长度 = len - 1
+    let ret_len = len - 1;
+    let mut rx = vec![0.0_f64; ret_len];
+    let mut ry = vec![0.0_f64; ret_len];
+    for j in 0..ret_len {
+        unsafe {
+            rx[j] = (*input0.get_unchecked(j + 1) - *input0.get_unchecked(j))
+                / *input0.get_unchecked(j);
+            ry[j] = (*input1.get_unchecked(j + 1) - *input1.get_unchecked(j))
+                / *input1.get_unchecked(j);
+        }
+    }
 
-    let denom_x = n * sxx - sx * sx;
-    output[timeperiod] = if denom_x > 0.0 {
-        (n * sxy - sx * sy) / denom_x
+    // 滑动窗口: 对于输出 index i (i >= timeperiod)，
+    // 使用收益率 rx[i-timeperiod..i] (即原始 indices (i-timeperiod+1)..=i 的收益率)
+    let mut sx = 0.0_f64;
+    let mut sy = 0.0_f64;
+    let mut sxx = 0.0_f64;
+    let mut sxy = 0.0_f64;
+
+    // 初始化第一个窗口: rx[0..timeperiod] 对应原始 output[timeperiod]
+    for j in 0..timeperiod {
+        let x = rx[j];
+        let y = ry[j];
+        sx += x;
+        sy += y;
+        sxx += x * x;
+        sxy += x * y;
+    }
+
+    let denom = n * sxx - sx * sx;
+    output[timeperiod] = if denom > 0.0 {
+        (n * sxy - sx * sy) / denom
     } else {
         0.0
     };
 
-    // 滑动窗口：每次加入新元素、移除最旧元素
+    // 滑动
     for i in (timeperiod + 1)..len {
-        let old_x = input0[i - timeperiod];
-        let old_y = input1[i - timeperiod];
-        let new_x = input0[i];
-        let new_y = input1[i];
+        // 移除 rx[i - timeperiod - 1]，加入 rx[i - 1]
+        let old_idx = i - timeperiod - 1;
+        let new_idx = i - 1;
+        unsafe {
+            let ox = *rx.get_unchecked(old_idx);
+            let oy = *ry.get_unchecked(old_idx);
+            let nx = *rx.get_unchecked(new_idx);
+            let ny = *ry.get_unchecked(new_idx);
+            sx += nx - ox;
+            sy += ny - oy;
+            sxx += nx * nx - ox * ox;
+            sxy += nx * ny - ox * oy;
+        }
 
-        sx += new_x - old_x;
-        sy += new_y - old_y;
-        sxx += new_x * new_x - old_x * old_x;
-        sxy += new_x * new_y - old_x * old_y;
-
-        let denom_x = n * sxx - sx * sx;
-        output[i] = if denom_x > 0.0 {
-            (n * sxy - sx * sy) / denom_x
+        let denom = n * sxx - sx * sx;
+        output[i] = if denom > 0.0 {
+            (n * sxy - sx * sy) / denom
         } else {
             0.0
         };
@@ -138,8 +175,9 @@ pub fn correl(input0: &[f64], input1: &[f64], timeperiod: usize) -> TaResult<Vec
             got: len,
         });
     }
-    let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
     let n = timeperiod as f64;
 
     // 初始化第一个窗口 [0..timeperiod] 的滑动求和
@@ -179,8 +217,9 @@ pub fn correl(input0: &[f64], input1: &[f64], timeperiod: usize) -> TaResult<Vec
 pub fn linearreg(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let (slope, intercept) = linearreg_components(input, timeperiod)?;
     let len = input.len();
-    let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
     for i in lookback..len {
         output[i] = intercept[i] + slope[i] * lookback as f64;
     }
@@ -203,7 +242,9 @@ pub fn linearreg_intercept(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64
 pub fn linearreg_angle(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let (slope, _) = linearreg_components(input, timeperiod)?;
     let len = input.len();
-    let mut output = vec![f64::NAN; len];
+    let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
     for i in 0..len {
         if !slope[i].is_nan() {
             output[i] = slope[i].atan().to_degrees();
@@ -216,8 +257,9 @@ pub fn linearreg_angle(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
 pub fn tsf(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let (slope, intercept) = linearreg_components(input, timeperiod)?;
     let len = input.len();
-    let mut output = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
+    let mut output = vec![0.0_f64; len];
+    output[..lookback].fill(f64::NAN);
     for i in lookback..len {
         output[i] = intercept[i] + slope[i] * timeperiod as f64;
     }
@@ -247,9 +289,11 @@ fn linearreg_components(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>,
         });
     }
 
-    let mut slope = vec![f64::NAN; len];
-    let mut intercept = vec![f64::NAN; len];
     let lookback = timeperiod - 1;
+    let mut slope = vec![0.0_f64; len];
+    slope[..lookback].fill(f64::NAN);
+    let mut intercept = vec![0.0_f64; len];
+    intercept[..lookback].fill(f64::NAN);
     let n = timeperiod as f64;
     let p = timeperiod;
 

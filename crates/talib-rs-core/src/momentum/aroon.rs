@@ -1,9 +1,8 @@
 use crate::error::{TaError, TaResult};
-use crate::sliding_window::{sliding_max, sliding_min};
 
-/// Aroon (AROON) — O(n) 单调队列算法
+/// Aroon (AROON) -- scalar brute rescan (amortized O(n))
 ///
-/// 返回 (aroon_down, aroon_up)
+/// Returns (aroon_down, aroon_up)
 /// Aroon Up = 100 * (period - bars since highest high) / period
 /// Aroon Down = 100 * (period - bars since lowest low) / period
 /// lookback = timeperiod
@@ -30,36 +29,173 @@ pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>
     }
 
     let period_f = timeperiod as f64;
-    let window = timeperiod + 1; // AROON 的窗口包含当前 bar
+    let window = timeperiod + 1; // aroon window is period+1 bars
 
-    // O(n) 单调队列找每个窗口的最大/最小索引
-    let max_results = sliding_max(high, window);
-    let min_results = sliding_min(low, window);
+    let mut aroon_down = vec![0.0_f64; len];
+    aroon_down[..timeperiod].fill(f64::NAN);
+    let mut aroon_up = vec![0.0_f64; len];
+    aroon_up[..timeperiod].fill(f64::NAN);
 
-    let mut aroon_down = vec![f64::NAN; len];
-    let mut aroon_up = vec![f64::NAN; len];
+    // Initialize first window [0..=timeperiod]
+    let mut highest = high[0];
+    let mut highest_idx: usize = 0;
+    let mut lowest = low[0];
+    let mut lowest_idx: usize = 0;
+    for j in 1..window {
+        if high[j] >= highest {
+            highest = high[j];
+            highest_idx = j;
+        }
+        if low[j] <= lowest {
+            lowest = low[j];
+            lowest_idx = j;
+        }
+    }
+    aroon_up[timeperiod] = 100.0 * (period_f - (timeperiod - highest_idx) as f64) / period_f;
+    aroon_down[timeperiod] = 100.0 * (period_f - (timeperiod - lowest_idx) as f64) / period_f;
 
-    for (j, i) in (timeperiod..len).enumerate() {
-        let (_, highest_idx) = max_results[j];
-        let (_, lowest_idx) = min_results[j];
-        aroon_up[i] = 100.0 * (period_f - (i - highest_idx) as f64) / period_f;
-        aroon_down[i] = 100.0 * (period_f - (i - lowest_idx) as f64) / period_f;
+    let mut trailing_idx = 1;
+    let mut today = timeperiod + 1;
+
+    while today < len {
+        let h = unsafe { *high.get_unchecked(today) };
+        let l = unsafe { *low.get_unchecked(today) };
+
+        // Max tracking on high[] — scalar brute rescan when out of window
+        if highest_idx < trailing_idx {
+            highest_idx = trailing_idx;
+            highest = high[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if high[j] >= highest {
+                    highest = high[j];
+                    highest_idx = j;
+                }
+            }
+        } else if h >= highest {
+            highest_idx = today;
+            highest = h;
+        }
+
+        // Min tracking on low[] — scalar brute rescan when out of window
+        if lowest_idx < trailing_idx {
+            lowest_idx = trailing_idx;
+            lowest = low[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if low[j] <= lowest {
+                    lowest = low[j];
+                    lowest_idx = j;
+                }
+            }
+        } else if l <= lowest {
+            lowest_idx = today;
+            lowest = l;
+        }
+
+        unsafe {
+            *aroon_up.get_unchecked_mut(today) =
+                100.0 * (period_f - (today - highest_idx) as f64) / period_f;
+            *aroon_down.get_unchecked_mut(today) =
+                100.0 * (period_f - (today - lowest_idx) as f64) / period_f;
+        }
+        trailing_idx += 1;
+        today += 1;
     }
 
     Ok((aroon_down, aroon_up))
 }
 
-/// Aroon Oscillator — O(n)
+/// Aroon Oscillator -- scalar brute rescan (amortized O(n))
 ///
 /// AROONOSC = Aroon Up - Aroon Down
 pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
-    let (aroon_down, aroon_up) = aroon(high, low, timeperiod)?;
     let len = high.len();
-    let mut output = vec![f64::NAN; len];
-    for i in 0..len {
-        if !aroon_up[i].is_nan() && !aroon_down[i].is_nan() {
-            output[i] = aroon_up[i] - aroon_down[i];
+    if len != low.len() {
+        return Err(TaError::LengthMismatch {
+            expected: len,
+            got: low.len(),
+        });
+    }
+    if timeperiod < 2 {
+        return Err(TaError::InvalidParameter {
+            name: "timeperiod",
+            value: timeperiod.to_string(),
+            reason: "must be >= 2",
+        });
+    }
+    if len <= timeperiod {
+        return Err(TaError::InsufficientData {
+            need: timeperiod + 1,
+            got: len,
+        });
+    }
+
+    let period_f = timeperiod as f64;
+    let window = timeperiod + 1;
+
+    let mut output = vec![0.0_f64; len];
+    output[..timeperiod].fill(f64::NAN);
+
+    let mut highest = high[0];
+    let mut highest_idx: usize = 0;
+    let mut lowest = low[0];
+    let mut lowest_idx: usize = 0;
+    for j in 1..window {
+        if high[j] >= highest {
+            highest = high[j];
+            highest_idx = j;
+        }
+        if low[j] <= lowest {
+            lowest = low[j];
+            lowest_idx = j;
         }
     }
+    {
+        let up = 100.0 * (period_f - (timeperiod - highest_idx) as f64) / period_f;
+        let down = 100.0 * (period_f - (timeperiod - lowest_idx) as f64) / period_f;
+        output[timeperiod] = up - down;
+    }
+
+    let mut trailing_idx = 1;
+    let mut today = timeperiod + 1;
+
+    while today < len {
+        let h = unsafe { *high.get_unchecked(today) };
+        let l = unsafe { *low.get_unchecked(today) };
+
+        if highest_idx < trailing_idx {
+            highest_idx = trailing_idx;
+            highest = high[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if high[j] >= highest {
+                    highest = high[j];
+                    highest_idx = j;
+                }
+            }
+        } else if h >= highest {
+            highest_idx = today;
+            highest = h;
+        }
+
+        if lowest_idx < trailing_idx {
+            lowest_idx = trailing_idx;
+            lowest = low[trailing_idx];
+            for j in (trailing_idx + 1)..=today {
+                if low[j] <= lowest {
+                    lowest = low[j];
+                    lowest_idx = j;
+                }
+            }
+        } else if l <= lowest {
+            lowest_idx = today;
+            lowest = l;
+        }
+
+        let up = 100.0 * (period_f - (today - highest_idx) as f64) / period_f;
+        let down = 100.0 * (period_f - (today - lowest_idx) as f64) / period_f;
+        unsafe { *output.get_unchecked_mut(today) = up - down; }
+        trailing_idx += 1;
+        today += 1;
+    }
+
     Ok(output)
 }

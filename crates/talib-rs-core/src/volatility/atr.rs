@@ -1,7 +1,7 @@
 use super::true_range_array;
 use crate::error::{TaError, TaResult};
 
-/// True Range (TRANGE)
+/// True Range (TRANGE) — 直接计算，无中间分配
 pub fn trange(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> {
     let len = high.len();
     if len != low.len() || len != close.len() {
@@ -14,11 +14,18 @@ pub fn trange(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> {
         return Err(TaError::InsufficientData { need: 2, got: len });
     }
 
-    let tr = true_range_array(high, low, close);
-    let mut output = vec![f64::NAN; len];
-    // lookback = 1 (需要前一天的 close)
+    let mut output = vec![0.0_f64; len];
+    output[0] = f64::NAN; // lookback = 1
     for i in 1..len {
-        output[i] = tr[i];
+        unsafe {
+            let h = *high.get_unchecked(i);
+            let l = *low.get_unchecked(i);
+            let pc = *close.get_unchecked(i - 1);
+            let hl = h - l;
+            let hc = (h - pc).abs();
+            let lc = (l - pc).abs();
+            *output.get_unchecked_mut(i) = hl.max(hc).max(lc);
+        }
     }
     Ok(output)
 }
@@ -42,10 +49,11 @@ pub fn atr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaRes
     }
 
     let tr = true_range_array(high, low, close);
-    let mut output = vec![f64::NAN; len];
+    let mut output = vec![0.0_f64; len];
+    output[..timeperiod].fill(f64::NAN);
 
     // 初始 ATR = SMA(TR)
-    let mut sum: f64 = tr[1..=timeperiod].iter().sum();
+    let sum: f64 = tr[1..=timeperiod].iter().sum();
     let mut prev_atr = sum / timeperiod as f64;
     output[timeperiod] = prev_atr;
 
@@ -62,15 +70,68 @@ pub fn atr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaRes
 /// Normalized Average True Range (NATR)
 ///
 /// NATR = (ATR / Close) * 100
+/// Inlined ATR computation to avoid intermediate Vec allocation and extra pass.
 pub fn natr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
-    let atr_values = atr(high, low, close, timeperiod)?;
-    let len = close.len();
-    let mut output = vec![f64::NAN; len];
-    for i in 0..len {
-        if !atr_values[i].is_nan() && close[i] != 0.0 {
-            output[i] = (atr_values[i] / close[i]) * 100.0;
+    let len = high.len();
+    if len != low.len() || len != close.len() {
+        return Err(TaError::LengthMismatch {
+            expected: len,
+            got: low.len().min(close.len()),
+        });
+    }
+    if timeperiod < 1 || len <= timeperiod {
+        return Err(TaError::InsufficientData {
+            need: timeperiod + 1,
+            got: len,
+        });
+    }
+
+    let mut output = vec![0.0_f64; len];
+    output[..timeperiod].fill(f64::NAN);
+
+    // Compute initial ATR = SMA of TR for bars 1..=timeperiod
+    let mut sum_tr = 0.0_f64;
+    for i in 1..=timeperiod {
+        unsafe {
+            let h = *high.get_unchecked(i);
+            let l = *low.get_unchecked(i);
+            let pc = *close.get_unchecked(i - 1);
+            let hl = h - l;
+            let hc = (h - pc).abs();
+            let lc = (l - pc).abs();
+            sum_tr += hl.max(hc).max(lc);
         }
     }
+
+    let pf = timeperiod as f64;
+    let mut prev_atr = sum_tr / pf;
+    unsafe {
+        let c = *close.get_unchecked(timeperiod);
+        if c != 0.0 {
+            *output.get_unchecked_mut(timeperiod) = (prev_atr / c) * 100.0;
+        }
+    }
+
+    // Wilder smoothing + NATR in single pass
+    for i in (timeperiod + 1)..len {
+        unsafe {
+            let h = *high.get_unchecked(i);
+            let l = *low.get_unchecked(i);
+            let pc = *close.get_unchecked(i - 1);
+            let hl = h - l;
+            let hc = (h - pc).abs();
+            let lc = (l - pc).abs();
+            let tr_i = hl.max(hc).max(lc);
+
+            prev_atr = (prev_atr * (pf - 1.0) + tr_i) / pf;
+
+            let c = *close.get_unchecked(i);
+            if c != 0.0 {
+                *output.get_unchecked_mut(i) = (prev_atr / c) * 100.0;
+            }
+        }
+    }
+
     Ok(output)
 }
 

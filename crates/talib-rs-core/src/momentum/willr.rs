@@ -48,7 +48,7 @@ pub fn willr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaR
     {
         let range = highest - lowest;
         output[lookback] = if range > 0.0 {
-            -100.0 * (highest - unsafe { *close.get_unchecked(lookback) }) / range
+            -100.0 * (highest - close[lookback]) / range
         } else {
             0.0
         };
@@ -58,8 +58,8 @@ pub fn willr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaR
     let mut today = timeperiod;
 
     while today < len {
-        let h = unsafe { *high.get_unchecked(today) };
-        let l = unsafe { *low.get_unchecked(today) };
+        let h = high[today];
+        let l = low[today];
 
         // Max tracking on high[] — scalar brute rescan
         if highest_idx < trailing_idx {
@@ -92,14 +92,12 @@ pub fn willr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaR
         }
 
         let range = highest - lowest;
-        let c = unsafe { *close.get_unchecked(today) };
-        unsafe {
-            *output.get_unchecked_mut(today) = if range > 0.0 {
-                -100.0 * (highest - c) / range
-            } else {
-                0.0
-            };
-        }
+        let c = close[today];
+        output[today] = if range > 0.0 {
+            -100.0 * (highest - c) / range
+        } else {
+            0.0
+        };
         trailing_idx += 1;
         today += 1;
     }

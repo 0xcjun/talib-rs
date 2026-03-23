@@ -49,7 +49,7 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     let mut e1 = seed1;
     let mut sum2 = seed1;
     for i in timeperiod..(2 * p + 1) {
-        e1 = unsafe { *input.get_unchecked(i) } * k + e1 * one_minus_k;
+        e1 = input[i] * k + e1 * one_minus_k;
         sum2 += e1;
     }
 
@@ -58,7 +58,7 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     let mut e2 = seed2;
     let mut sum3 = seed2;
     for i in (2 * p + 1)..(3 * p + 1) {
-        let inp = unsafe { *input.get_unchecked(i) };
+        let inp = input[i];
         e1 = inp * k + e1 * one_minus_k;
         e2 = e1 * k + e2 * one_minus_k;
         sum3 += e2;
@@ -69,7 +69,7 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     let mut e3 = seed3;
     let mut sum4 = seed3;
     for i in (3 * p + 1)..(4 * p + 1) {
-        let inp = unsafe { *input.get_unchecked(i) };
+        let inp = input[i];
         e1 = inp * k + e1 * one_minus_k;
         e2 = e1 * k + e2 * one_minus_k;
         e3 = e2 * k + e3 * one_minus_k;
@@ -81,7 +81,7 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     let mut e4 = seed4;
     let mut sum5 = seed4;
     for i in (4 * p + 1)..(5 * p + 1) {
-        let inp = unsafe { *input.get_unchecked(i) };
+        let inp = input[i];
         e1 = inp * k + e1 * one_minus_k;
         e2 = e1 * k + e2 * one_minus_k;
         e3 = e2 * k + e3 * one_minus_k;
@@ -94,7 +94,7 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     let mut e5 = seed5;
     let mut sum6 = seed5;
     for i in (5 * p + 1)..(6 * p + 1) {
-        let inp = unsafe { *input.get_unchecked(i) };
+        let inp = input[i];
         e1 = inp * k + e1 * one_minus_k;
         e2 = e1 * k + e2 * one_minus_k;
         e3 = e2 * k + e3 * one_minus_k;
@@ -106,19 +106,17 @@ pub fn t3(input: &[f64], timeperiod: usize, v_factor: f64) -> TaResult<Vec<f64>>
     // Phase 6: EMA6 seed ready, compute first output at index 6*p = lookback
     let seed6 = sum6 / tp;
     let mut e6 = seed6;
-    unsafe { *output.get_unchecked_mut(lookback) = c1 * e6 + c2 * e5 + c3 * e4 + c4 * e3; }
+    output[lookback] = c1 * e6 + c2 * e5 + c3 * e4 + c4 * e3;
 
     // Steady state: all 6 layers cascade per bar
     for i in (lookback + 1)..len {
-        unsafe {
-            e1 = *input.get_unchecked(i) * k + e1 * one_minus_k;
-            e2 = e1 * k + e2 * one_minus_k;
-            e3 = e2 * k + e3 * one_minus_k;
-            e4 = e3 * k + e4 * one_minus_k;
-            e5 = e4 * k + e5 * one_minus_k;
-            e6 = e5 * k + e6 * one_minus_k;
-            *output.get_unchecked_mut(i) = c1 * e6 + c2 * e5 + c3 * e4 + c4 * e3;
-        }
+        e1 = input[i] * k + e1 * one_minus_k;
+        e2 = e1 * k + e2 * one_minus_k;
+        e3 = e2 * k + e3 * one_minus_k;
+        e4 = e3 * k + e4 * one_minus_k;
+        e5 = e4 * k + e5 * one_minus_k;
+        e6 = e5 * k + e6 * one_minus_k;
+        output[i] = c1 * e6 + c2 * e5 + c3 * e4 + c4 * e3;
     }
 
     Ok(output)

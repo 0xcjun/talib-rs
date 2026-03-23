@@ -66,13 +66,11 @@ pub fn mama(input: &[f64], fastlimit: f64, slowlimit: f64) -> TaResult<(Vec<f64>
         let ri = i % 7;
 
         if i >= 3 {
-            unsafe {
-                smooth_buf[ri] = (4.0 * *input.get_unchecked(i)
-                    + 3.0 * *input.get_unchecked(i - 1)
-                    + 2.0 * *input.get_unchecked(i - 2)
-                    + *input.get_unchecked(i - 3))
-                    / 10.0;
-            }
+            smooth_buf[ri] = (4.0 * input[i]
+                + 3.0 * input[i - 1]
+                + 2.0 * input[i - 2]
+                + input[i - 3])
+                / 10.0;
         }
 
         if i >= 9 {
@@ -165,17 +163,15 @@ pub fn mama(input: &[f64], fastlimit: f64, slowlimit: f64) -> TaResult<(Vec<f64>
 
             if i >= lookback {
                 if prev_mama == 0.0 {
-                    prev_mama = unsafe { *input.get_unchecked(i) };
+                    prev_mama = input[i];
                     prev_fama = prev_mama;
                 }
-                let inp_i = unsafe { *input.get_unchecked(i) };
+                let inp_i = input[i];
                 prev_mama = alpha * inp_i + (1.0 - alpha) * prev_mama;
                 prev_fama = 0.5 * alpha * prev_mama + (1.0 - 0.5 * alpha) * prev_fama;
 
-                unsafe {
-                    *mama_out.get_unchecked_mut(i) = prev_mama;
-                    *fama_out.get_unchecked_mut(i) = prev_fama;
-                }
+                mama_out[i] = prev_mama;
+                fama_out[i] = prev_fama;
             }
 
             // Update state for next iteration

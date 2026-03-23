@@ -34,43 +34,37 @@ pub fn kama(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     // 初始化波动率: sum of |delta| for indices 1..=timeperiod
     let mut volatility = 0.0_f64;
     for j in 1..=timeperiod {
-        volatility += unsafe {
-            (*input.get_unchecked(j) - *input.get_unchecked(j - 1)).abs()
-        };
+        volatility += (input[j] - input[j - 1]).abs();
     }
 
     // First output at i = lookback (no volatility update needed)
     {
         let i = lookback;
-        let direction = unsafe {
-            (*input.get_unchecked(i) - *input.get_unchecked(i - timeperiod)).abs()
-        };
+        let direction = (input[i] - input[i - timeperiod]).abs();
         let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
         let sc_raw = er * sc_diff + slow_sc;
         let sc = sc_raw * sc_raw;
-        let close_i = unsafe { *input.get_unchecked(i) };
+        let close_i = input[i];
         let kama_val = prev_kama + sc * (close_i - prev_kama);
-        unsafe { *output.get_unchecked_mut(i) = kama_val; }
+        output[i] = kama_val;
         prev_kama = kama_val;
     }
 
     // Remaining outputs with sliding volatility update
     for i in (lookback + 1)..len {
-        unsafe {
-            volatility += (*input.get_unchecked(i) - *input.get_unchecked(i - 1)).abs()
-                - (*input.get_unchecked(i - timeperiod)
-                    - *input.get_unchecked(i - timeperiod - 1))
-                    .abs();
+        volatility += (input[i] - input[i - 1]).abs()
+            - (input[i - timeperiod]
+                - input[i - timeperiod - 1])
+                .abs();
 
-            let direction = (*input.get_unchecked(i) - *input.get_unchecked(i - timeperiod)).abs();
-            let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
-            let sc_raw = er * sc_diff + slow_sc;
-            let sc = sc_raw * sc_raw;
-            let close_i = *input.get_unchecked(i);
-            let kama_val = prev_kama + sc * (close_i - prev_kama);
-            *output.get_unchecked_mut(i) = kama_val;
-            prev_kama = kama_val;
-        }
+        let direction = (input[i] - input[i - timeperiod]).abs();
+        let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
+        let sc_raw = er * sc_diff + slow_sc;
+        let sc = sc_raw * sc_raw;
+        let close_i = input[i];
+        let kama_val = prev_kama + sc * (close_i - prev_kama);
+        output[i] = kama_val;
+        prev_kama = kama_val;
     }
 
     Ok(output)

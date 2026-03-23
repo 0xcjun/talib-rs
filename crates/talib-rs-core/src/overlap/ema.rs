@@ -34,15 +34,13 @@ pub fn ema_core(input: &[f64], period: usize, k: f64) -> TaResult<Vec<f64>> {
     let sma_seed: f64 = crate::simd::sum_f64(&input[..period]) / period as f64;
     output[lookback] = sma_seed;
 
-    // 递推 EMA — 标量累加器 + unsafe 避免边界检查
+    // 递推 EMA — 标量累加器
     let one_minus_k = 1.0 - k;
     let mut prev = sma_seed;
     for i in period..len {
-        unsafe {
-            let val = *input.get_unchecked(i) * k + prev * one_minus_k;
-            *output.get_unchecked_mut(i) = val;
-            prev = val;
-        }
+        let val = input[i] * k + prev * one_minus_k;
+        output[i] = val;
+        prev = val;
     }
 
     Ok(output)

@@ -34,11 +34,9 @@ pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     ema1[p] = seed1;
     let mut ema1_prev = seed1;
     for i in timeperiod..len {
-        unsafe {
-            let val = *input.get_unchecked(i) * k + ema1_prev * one_minus_k;
-            *ema1.get_unchecked_mut(i) = val;
-            ema1_prev = val;
-        }
+        let val = input[i] * k + ema1_prev * one_minus_k;
+        ema1[i] = val;
+        ema1_prev = val;
     }
 
     // EMA2: 对 ema1[p..] 的有效值做 EMA
@@ -52,16 +50,12 @@ pub fn dema(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
         output[i] = f64::NAN;
     }
     let mut ema2_prev = seed2;
-    unsafe {
-        *output.get_unchecked_mut(lookback) = 2.0 * *ema1.get_unchecked(lookback) - ema2_prev;
-    }
+    output[lookback] = 2.0 * ema1[lookback] - ema2_prev;
 
     for i in (lookback + 1)..len {
-        unsafe {
-            let e1 = *ema1.get_unchecked(i);
-            ema2_prev = e1 * k + ema2_prev * one_minus_k;
-            *output.get_unchecked_mut(i) = 2.0 * e1 - ema2_prev;
-        }
+        let e1 = ema1[i];
+        ema2_prev = e1 * k + ema2_prev * one_minus_k;
+        output[i] = 2.0 * e1 - ema2_prev;
     }
 
     Ok(output)

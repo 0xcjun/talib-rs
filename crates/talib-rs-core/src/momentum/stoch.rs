@@ -40,24 +40,22 @@ pub fn stoch(
         });
     }
 
-    // 计算 FastK with unsafe array access
+    // 计算 FastK
     let fastk_len = len - (fastk_period - 1);
     let mut fastk = Vec::with_capacity(fastk_len);
     for i in (fastk_period - 1)..len {
         let start = i + 1 - fastk_period;
         let mut hh = f64::NEG_INFINITY;
         let mut ll = f64::INFINITY;
-        unsafe {
-            for j in start..=i {
-                let h = *high.get_unchecked(j);
-                let l = *low.get_unchecked(j);
-                if h > hh { hh = h; }
-                if l < ll { ll = l; }
-            }
+        for j in start..=i {
+            let h = high[j];
+            let l = low[j];
+            if h > hh { hh = h; }
+            if l < ll { ll = l; }
         }
         let range = hh - ll;
         if range > 0.0 {
-            fastk.push(100.0 * (unsafe { *close.get_unchecked(i) } - ll) / range);
+            fastk.push(100.0 * (close[i] - ll) / range);
         } else {
             fastk.push(50.0);
         }
@@ -87,9 +85,7 @@ pub fn stoch(
     for (j, i) in (aligned_start..len).enumerate() {
         let idx = k_skip + j;
         if idx < slowk_valid.len() {
-            unsafe {
-                *slowk_out.get_unchecked_mut(i) = *slowk_valid.get_unchecked(idx);
-            }
+            slowk_out[i] = slowk_valid[idx];
         }
     }
 
@@ -98,9 +94,7 @@ pub fn stoch(
     for (j, i) in (aligned_start..len).enumerate() {
         let idx = d_skip + j;
         if idx < slowd_arr.len() {
-            unsafe {
-                *slowd_out.get_unchecked_mut(i) = *slowd_arr.get_unchecked(idx);
-            }
+            slowd_out[i] = slowd_arr[idx];
         }
     }
 
@@ -139,17 +133,15 @@ pub fn stochf(
         let start = i + 1 - fastk_period;
         let mut hh = f64::NEG_INFINITY;
         let mut ll = f64::INFINITY;
-        unsafe {
-            for j in start..=i {
-                let h = *high.get_unchecked(j);
-                let l = *low.get_unchecked(j);
-                if h > hh { hh = h; }
-                if l < ll { ll = l; }
-            }
+        for j in start..=i {
+            let h = high[j];
+            let l = low[j];
+            if h > hh { hh = h; }
+            if l < ll { ll = l; }
         }
         let range = hh - ll;
         if range > 0.0 {
-            fastk_values.push(100.0 * (unsafe { *close.get_unchecked(i) } - ll) / range);
+            fastk_values.push(100.0 * (close[i] - ll) / range);
         } else {
             fastk_values.push(50.0);
         }
@@ -167,9 +159,7 @@ pub fn stochf(
     for (j, i) in (aligned_start..len).enumerate() {
         let idx = k_skip + j;
         if idx < fastk_values.len() {
-            unsafe {
-                *fastk_out.get_unchecked_mut(i) = *fastk_values.get_unchecked(idx);
-            }
+            fastk_out[i] = fastk_values[idx];
         }
     }
 
@@ -177,9 +167,7 @@ pub fn stochf(
     for (j, i) in (aligned_start..len).enumerate() {
         let idx = d_skip + j;
         if idx < fastd_arr.len() {
-            unsafe {
-                *fastd_out.get_unchecked_mut(i) = *fastd_arr.get_unchecked(idx);
-            }
+            fastd_out[i] = fastd_arr[idx];
         }
     }
 
@@ -275,7 +263,7 @@ mod tests {
         let close: Vec<f64> = (0..30)
             .map(|i| 50.0 + (i as f64 * 0.3).sin() * 5.0)
             .collect();
-        let (slowk, slowd) = stoch(&high, &low, &close, 5, 3, MaType::Sma, 3, MaType::Sma).unwrap();
+        let (slowk, _slowd) = stoch(&high, &low, &close, 5, 3, MaType::Sma, 3, MaType::Sma).unwrap();
         assert_eq!(slowk.len(), 30);
     }
 }

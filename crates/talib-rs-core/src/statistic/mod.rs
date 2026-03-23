@@ -99,12 +99,8 @@ pub fn beta(input0: &[f64], input1: &[f64], timeperiod: usize) -> TaResult<Vec<f
     let mut rx = vec![0.0_f64; ret_len];
     let mut ry = vec![0.0_f64; ret_len];
     for j in 0..ret_len {
-        unsafe {
-            rx[j] = (*input0.get_unchecked(j + 1) - *input0.get_unchecked(j))
-                / *input0.get_unchecked(j);
-            ry[j] = (*input1.get_unchecked(j + 1) - *input1.get_unchecked(j))
-                / *input1.get_unchecked(j);
-        }
+        rx[j] = (input0[j + 1] - input0[j]) / input0[j];
+        ry[j] = (input1[j + 1] - input1[j]) / input1[j];
     }
 
     // 滑动窗口: 对于输出 index i (i >= timeperiod)，
@@ -136,16 +132,14 @@ pub fn beta(input0: &[f64], input1: &[f64], timeperiod: usize) -> TaResult<Vec<f
         // 移除 rx[i - timeperiod - 1]，加入 rx[i - 1]
         let old_idx = i - timeperiod - 1;
         let new_idx = i - 1;
-        unsafe {
-            let ox = *rx.get_unchecked(old_idx);
-            let oy = *ry.get_unchecked(old_idx);
-            let nx = *rx.get_unchecked(new_idx);
-            let ny = *ry.get_unchecked(new_idx);
-            sx += nx - ox;
-            sy += ny - oy;
-            sxx += nx * nx - ox * ox;
-            sxy += nx * ny - ox * oy;
-        }
+        let ox = rx[old_idx];
+        let oy = ry[old_idx];
+        let nx = rx[new_idx];
+        let ny = ry[new_idx];
+        sx += nx - ox;
+        sy += ny - oy;
+        sxx += nx * nx - ox * ox;
+        sxy += nx * ny - ox * oy;
 
         let denom = n * sxx - sx * sx;
         output[i] = if denom > 0.0 {

@@ -63,7 +63,7 @@ pub fn max(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut today = timeperiod;
 
     while today < len {
-        let v = unsafe { *input.get_unchecked(today) };
+        let v = input[today];
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = input[trailing_idx];
@@ -77,7 +77,7 @@ pub fn max(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
             highest_idx = today;
             highest = v;
         }
-        unsafe { *output.get_unchecked_mut(today) = highest; }
+        output[today] = highest;
         trailing_idx += 1;
         today += 1;
     }
@@ -106,7 +106,7 @@ pub fn maxindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut today = timeperiod;
 
     while today < len {
-        let v = unsafe { *input.get_unchecked(today) };
+        let v = input[today];
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = input[trailing_idx];
@@ -120,7 +120,7 @@ pub fn maxindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
             highest_idx = today;
             highest = v;
         }
-        unsafe { *output.get_unchecked_mut(today) = highest_idx as f64; }
+        output[today] = highest_idx as f64;
         trailing_idx += 1;
         today += 1;
     }
@@ -149,7 +149,7 @@ pub fn min(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut today = timeperiod;
 
     while today < len {
-        let v = unsafe { *input.get_unchecked(today) };
+        let v = input[today];
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = input[trailing_idx];
@@ -163,7 +163,7 @@ pub fn min(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
             lowest_idx = today;
             lowest = v;
         }
-        unsafe { *output.get_unchecked_mut(today) = lowest; }
+        output[today] = lowest;
         trailing_idx += 1;
         today += 1;
     }
@@ -192,7 +192,7 @@ pub fn minindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut today = timeperiod;
 
     while today < len {
-        let v = unsafe { *input.get_unchecked(today) };
+        let v = input[today];
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = input[trailing_idx];
@@ -206,7 +206,7 @@ pub fn minindex(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
             lowest_idx = today;
             lowest = v;
         }
-        unsafe { *output.get_unchecked_mut(today) = lowest_idx as f64; }
+        output[today] = lowest_idx as f64;
         trailing_idx += 1;
         today += 1;
     }
@@ -264,7 +264,7 @@ pub fn minmax(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>)
     let mut today = timeperiod;
 
     while today < len {
-        let v = unsafe { *input.get_unchecked(today) };
+        let v = input[today];
 
         // Max tracking
         if highest_idx < trailing_idx {
@@ -296,10 +296,8 @@ pub fn minmax(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>)
             lowest = v;
         }
 
-        unsafe {
-            *out_max.get_unchecked_mut(today) = highest;
-            *out_min.get_unchecked_mut(today) = lowest;
-        }
+        out_max[today] = highest;
+        out_min[today] = lowest;
         trailing_idx += 1;
         today += 1;
     }
@@ -341,7 +339,7 @@ pub fn minmaxindex(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<
     let mut today = timeperiod;
 
     while today < len {
-        let v = unsafe { *input.get_unchecked(today) };
+        let v = input[today];
 
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
@@ -371,10 +369,8 @@ pub fn minmaxindex(input: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<
             lowest = v;
         }
 
-        unsafe {
-            *out_maxidx.get_unchecked_mut(today) = highest_idx as f64;
-            *out_minidx.get_unchecked_mut(today) = lowest_idx as f64;
-        }
+        out_maxidx[today] = highest_idx as f64;
+        out_minidx[today] = lowest_idx as f64;
         trailing_idx += 1;
         today += 1;
     }

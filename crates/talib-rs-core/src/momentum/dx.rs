@@ -108,47 +108,43 @@ pub fn plus_di(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> T
     let mut sum_tr = 0.0_f64;
     let mut sum_pdm = 0.0_f64;
     for i in 1..timeperiod {
-        unsafe {
-            let h = *high.get_unchecked(i);
-            let l = *low.get_unchecked(i);
-            let pc = *close.get_unchecked(i - 1);
-            let hl = h - l;
-            let hc = (h - pc).abs();
-            let lc = (l - pc).abs();
-            sum_tr += hl.max(hc).max(lc);
+        let h = high[i];
+        let l = low[i];
+        let pc = close[i - 1];
+        let hl = h - l;
+        let hc = (h - pc).abs();
+        let lc = (l - pc).abs();
+        sum_tr += hl.max(hc).max(lc);
 
-            let up = h - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - l;
-            if up > down && up > 0.0 {
-                sum_pdm += up;
-            }
+        let up = h - high[i - 1];
+        let down = low[i - 1] - l;
+        if up > down && up > 0.0 {
+            sum_pdm += up;
         }
     }
 
     // Output phase: Wilder smoothing
     for i in timeperiod..len {
-        unsafe {
-            let h = *high.get_unchecked(i);
-            let l = *low.get_unchecked(i);
-            let pc = *close.get_unchecked(i - 1);
-            let hl = h - l;
-            let hc = (h - pc).abs();
-            let lc = (l - pc).abs();
-            let tr_i = hl.max(hc).max(lc);
+        let h = high[i];
+        let l = low[i];
+        let pc = close[i - 1];
+        let hl = h - l;
+        let hc = (h - pc).abs();
+        let lc = (l - pc).abs();
+        let tr_i = hl.max(hc).max(lc);
 
-            let up = h - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - l;
-            let pdm_i = if up > down && up > 0.0 { up } else { 0.0 };
+        let up = h - high[i - 1];
+        let down = low[i - 1] - l;
+        let pdm_i = if up > down && up > 0.0 { up } else { 0.0 };
 
-            sum_tr = sum_tr - sum_tr / pf + tr_i;
-            sum_pdm = sum_pdm - sum_pdm / pf + pdm_i;
+        sum_tr = sum_tr - sum_tr / pf + tr_i;
+        sum_pdm = sum_pdm - sum_pdm / pf + pdm_i;
 
-            *output.get_unchecked_mut(i) = if sum_tr > 0.0 {
-                100.0 * sum_pdm / sum_tr
-            } else {
-                0.0
-            };
-        }
+        output[i] = if sum_tr > 0.0 {
+            100.0 * sum_pdm / sum_tr
+        } else {
+            0.0
+        };
     }
 
     Ok(output)
@@ -181,47 +177,43 @@ pub fn minus_di(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> 
     let mut sum_tr = 0.0_f64;
     let mut sum_mdm = 0.0_f64;
     for i in 1..timeperiod {
-        unsafe {
-            let h = *high.get_unchecked(i);
-            let l = *low.get_unchecked(i);
-            let pc = *close.get_unchecked(i - 1);
-            let hl = h - l;
-            let hc = (h - pc).abs();
-            let lc = (l - pc).abs();
-            sum_tr += hl.max(hc).max(lc);
+        let h = high[i];
+        let l = low[i];
+        let pc = close[i - 1];
+        let hl = h - l;
+        let hc = (h - pc).abs();
+        let lc = (l - pc).abs();
+        sum_tr += hl.max(hc).max(lc);
 
-            let up = h - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - l;
-            if down > up && down > 0.0 {
-                sum_mdm += down;
-            }
+        let up = h - high[i - 1];
+        let down = low[i - 1] - l;
+        if down > up && down > 0.0 {
+            sum_mdm += down;
         }
     }
 
     // Output phase: Wilder smoothing
     for i in timeperiod..len {
-        unsafe {
-            let h = *high.get_unchecked(i);
-            let l = *low.get_unchecked(i);
-            let pc = *close.get_unchecked(i - 1);
-            let hl = h - l;
-            let hc = (h - pc).abs();
-            let lc = (l - pc).abs();
-            let tr_i = hl.max(hc).max(lc);
+        let h = high[i];
+        let l = low[i];
+        let pc = close[i - 1];
+        let hl = h - l;
+        let hc = (h - pc).abs();
+        let lc = (l - pc).abs();
+        let tr_i = hl.max(hc).max(lc);
 
-            let up = h - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - l;
-            let mdm_i = if down > up && down > 0.0 { down } else { 0.0 };
+        let up = h - high[i - 1];
+        let down = low[i - 1] - l;
+        let mdm_i = if down > up && down > 0.0 { down } else { 0.0 };
 
-            sum_tr = sum_tr - sum_tr / pf + tr_i;
-            sum_mdm = sum_mdm - sum_mdm / pf + mdm_i;
+        sum_tr = sum_tr - sum_tr / pf + tr_i;
+        sum_mdm = sum_mdm - sum_mdm / pf + mdm_i;
 
-            *output.get_unchecked_mut(i) = if sum_tr > 0.0 {
-                100.0 * sum_mdm / sum_tr
-            } else {
-                0.0
-            };
-        }
+        output[i] = if sum_tr > 0.0 {
+            100.0 * sum_mdm / sum_tr
+        } else {
+            0.0
+        };
     }
 
     Ok(output)
@@ -252,25 +244,21 @@ pub fn plus_dm(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f64
     // Seed: sum +DM for bars 1..timeperiod-1
     let mut sum = 0.0_f64;
     for i in 1..timeperiod {
-        unsafe {
-            let up = *high.get_unchecked(i) - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - *low.get_unchecked(i);
-            if up > down && up > 0.0 {
-                sum += up;
-            }
+        let up = high[i] - high[i - 1];
+        let down = low[i - 1] - low[i];
+        if up > down && up > 0.0 {
+            sum += up;
         }
     }
     output[timeperiod - 1] = sum;
 
     // Wilder smoothing
     for i in timeperiod..len {
-        unsafe {
-            let up = *high.get_unchecked(i) - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - *low.get_unchecked(i);
-            let pdm_i = if up > down && up > 0.0 { up } else { 0.0 };
-            sum = sum - sum / pf + pdm_i;
-            *output.get_unchecked_mut(i) = sum;
-        }
+        let up = high[i] - high[i - 1];
+        let down = low[i - 1] - low[i];
+        let pdm_i = if up > down && up > 0.0 { up } else { 0.0 };
+        sum = sum - sum / pf + pdm_i;
+        output[i] = sum;
     }
 
     Ok(output)
@@ -301,25 +289,21 @@ pub fn minus_dm(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f6
     // Seed: sum -DM for bars 1..timeperiod-1
     let mut sum = 0.0_f64;
     for i in 1..timeperiod {
-        unsafe {
-            let up = *high.get_unchecked(i) - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - *low.get_unchecked(i);
-            if down > up && down > 0.0 {
-                sum += down;
-            }
+        let up = high[i] - high[i - 1];
+        let down = low[i - 1] - low[i];
+        if down > up && down > 0.0 {
+            sum += down;
         }
     }
     output[timeperiod - 1] = sum;
 
     // Wilder smoothing
     for i in timeperiod..len {
-        unsafe {
-            let up = *high.get_unchecked(i) - *high.get_unchecked(i - 1);
-            let down = *low.get_unchecked(i - 1) - *low.get_unchecked(i);
-            let mdm_i = if down > up && down > 0.0 { down } else { 0.0 };
-            sum = sum - sum / pf + mdm_i;
-            *output.get_unchecked_mut(i) = sum;
-        }
+        let up = high[i] - high[i - 1];
+        let down = low[i - 1] - low[i];
+        let mdm_i = if down > up && down > 0.0 { down } else { 0.0 };
+        sum = sum - sum / pf + mdm_i;
+        output[i] = sum;
     }
 
     Ok(output)

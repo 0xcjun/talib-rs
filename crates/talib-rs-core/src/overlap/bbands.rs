@@ -102,18 +102,16 @@ fn bbands_sma(
 
     // 滑动
     for i in timeperiod..len {
-        unsafe {
-            let old = *input.get_unchecked(i - timeperiod);
-            let new = *input.get_unchecked(i);
-            sum += new - old;
-            sum_sq += new * new - old * old;
-            let ma_val = sum * inv_n;
-            let variance = sum_sq * inv_n - ma_val * ma_val;
-            let stddev = variance.max(0.0).sqrt();
-            *middle.get_unchecked_mut(i) = ma_val;
-            *upper.get_unchecked_mut(i) = ma_val + nbdevup * stddev;
-            *lower.get_unchecked_mut(i) = ma_val - nbdevdn * stddev;
-        }
+        let old = input[i - timeperiod];
+        let new = input[i];
+        sum += new - old;
+        sum_sq += new * new - old * old;
+        let ma_val = sum * inv_n;
+        let variance = sum_sq * inv_n - ma_val * ma_val;
+        let stddev = variance.max(0.0).sqrt();
+        middle[i] = ma_val;
+        upper[i] = ma_val + nbdevup * stddev;
+        lower[i] = ma_val - nbdevdn * stddev;
     }
 
     Ok((upper, middle, lower))

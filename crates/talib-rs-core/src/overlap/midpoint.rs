@@ -45,7 +45,7 @@ pub fn midpoint(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let mut today = timeperiod;
 
     while today < len {
-        let v = unsafe { *input.get_unchecked(today) };
+        let v = input[today];
 
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
@@ -75,7 +75,7 @@ pub fn midpoint(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
             lowest = v;
         }
 
-        unsafe { *output.get_unchecked_mut(today) = (highest + lowest) / 2.0; }
+        output[today] = (highest + lowest) / 2.0;
         trailing_idx += 1;
         today += 1;
     }
@@ -132,8 +132,8 @@ pub fn midprice(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f6
     let mut today = timeperiod;
 
     while today < len {
-        let h = unsafe { *high.get_unchecked(today) };
-        let l = unsafe { *low.get_unchecked(today) };
+        let h = high[today];
+        let l = low[today];
 
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
@@ -163,7 +163,7 @@ pub fn midprice(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f6
             lowest = l;
         }
 
-        unsafe { *output.get_unchecked_mut(today) = (highest + lowest) / 2.0; }
+        output[today] = (highest + lowest) / 2.0;
         trailing_idx += 1;
         today += 1;
     }

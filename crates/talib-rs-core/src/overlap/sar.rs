@@ -41,17 +41,13 @@ pub fn sar(high: &[f64], low: &[f64], acceleration: f64, maximum: f64) -> TaResu
     let mut prev_high = high[1];
 
     for i in 1..len {
-        let new_low;
-        let new_high;
-        unsafe {
-            new_low = *low.get_unchecked(i);
-            new_high = *high.get_unchecked(i);
-            // For i==1, prev stays as initialized (low[1]/high[1] = current bar)
-            // For i>1, update to previous bar
-            if i > 1 {
-                prev_low = *low.get_unchecked(i - 1);
-                prev_high = *high.get_unchecked(i - 1);
-            }
+        let new_low = low[i];
+        let new_high = high[i];
+        // For i==1, prev stays as initialized (low[1]/high[1] = current bar)
+        // For i>1, update to previous bar
+        if i > 1 {
+            prev_low = low[i - 1];
+            prev_high = high[i - 1];
         }
 
         if is_long {
@@ -66,7 +62,7 @@ pub fn sar(high: &[f64], low: &[f64], acceleration: f64, maximum: f64) -> TaResu
                     sar_val = new_high;
                 }
 
-                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+                output[i] = sar_val;
 
                 af = acceleration;
                 ep = new_low;
@@ -80,7 +76,7 @@ pub fn sar(high: &[f64], low: &[f64], acceleration: f64, maximum: f64) -> TaResu
                     sar_val = new_high;
                 }
             } else {
-                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+                output[i] = sar_val;
 
                 if new_high > ep {
                     ep = new_high;
@@ -111,7 +107,7 @@ pub fn sar(high: &[f64], low: &[f64], acceleration: f64, maximum: f64) -> TaResu
                     sar_val = new_low;
                 }
 
-                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+                output[i] = sar_val;
 
                 af = acceleration;
                 ep = new_high;
@@ -125,7 +121,7 @@ pub fn sar(high: &[f64], low: &[f64], acceleration: f64, maximum: f64) -> TaResu
                     sar_val = new_low;
                 }
             } else {
-                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+                output[i] = sar_val;
 
                 if new_low < ep {
                     ep = new_low;
@@ -218,15 +214,11 @@ pub fn sar_ext(
     let mut prev_high = high[1];
 
     for i in 1..len {
-        let new_low;
-        let new_high;
-        unsafe {
-            new_low = *low.get_unchecked(i);
-            new_high = *high.get_unchecked(i);
-            if i > 1 {
-                prev_low = *low.get_unchecked(i - 1);
-                prev_high = *high.get_unchecked(i - 1);
-            }
+        let new_low = low[i];
+        let new_high = high[i];
+        if i > 1 {
+            prev_low = low[i - 1];
+            prev_high = high[i - 1];
         }
 
         if is_long {
@@ -245,7 +237,7 @@ pub fn sar_ext(
                     sar_val += sar_val * offsetonreverse;
                 }
 
-                unsafe { *output.get_unchecked_mut(i) = -sar_val; }
+                output[i] = -sar_val;
 
                 af_short = accelerationinitshort;
                 ep = new_low;
@@ -259,7 +251,7 @@ pub fn sar_ext(
                     sar_val = new_high;
                 }
             } else {
-                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+                output[i] = sar_val;
 
                 if new_high > ep {
                     ep = new_high;
@@ -294,7 +286,7 @@ pub fn sar_ext(
                     sar_val -= sar_val * offsetonreverse;
                 }
 
-                unsafe { *output.get_unchecked_mut(i) = sar_val; }
+                output[i] = sar_val;
 
                 af_long = accelerationinitlong;
                 ep = new_high;
@@ -308,7 +300,7 @@ pub fn sar_ext(
                     sar_val = new_low;
                 }
             } else {
-                unsafe { *output.get_unchecked_mut(i) = -sar_val; }
+                output[i] = -sar_val;
 
                 if new_low < ep {
                     ep = new_low;

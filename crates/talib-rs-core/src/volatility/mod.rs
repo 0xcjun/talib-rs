@@ -2,23 +2,20 @@ mod atr;
 
 pub use atr::{atr, natr, trange};
 
-/// 计算 True Range 数组（被多个模块复用）
+/// True Range array (used by multiple modules)
 pub fn true_range_array(high: &[f64], low: &[f64], close: &[f64]) -> Vec<f64> {
     let len = high.len();
-    let mut tr = vec![0.0; len];
-    if len > 0 {
-        tr[0] = high[0] - low[0];
+    if len == 0 {
+        return vec![];
     }
-    for i in 1..len {
-        unsafe {
-            let h = *high.get_unchecked(i);
-            let l = *low.get_unchecked(i);
-            let pc = *close.get_unchecked(i - 1);
-            let hl = h - l;
-            let hc = (h - pc).abs();
-            let lc = (l - pc).abs();
-            *tr.get_unchecked_mut(i) = hl.max(hc).max(lc);
-        }
+    let mut tr = Vec::with_capacity(len);
+    tr.push(high[0] - low[0]);
+    // zip for auto-vectorization
+    for ((&h, &l), &pc) in high[1..].iter().zip(low[1..].iter()).zip(close[..len - 1].iter()) {
+        let hl = h - l;
+        let hc = (h - pc).abs();
+        let lc = (l - pc).abs();
+        tr.push(hl.max(hc).max(lc));
     }
     tr
 }

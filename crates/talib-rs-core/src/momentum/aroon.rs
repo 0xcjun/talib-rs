@@ -58,8 +58,8 @@ pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>
     let mut today = timeperiod + 1;
 
     while today < len {
-        let h = unsafe { *high.get_unchecked(today) };
-        let l = unsafe { *low.get_unchecked(today) };
+        let h = high[today];
+        let l = low[today];
 
         // Max tracking on high[] — scalar brute rescan when out of window
         if highest_idx < trailing_idx {
@@ -91,12 +91,10 @@ pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>
             lowest = l;
         }
 
-        unsafe {
-            *aroon_up.get_unchecked_mut(today) =
-                100.0 * (period_f - (today - highest_idx) as f64) / period_f;
-            *aroon_down.get_unchecked_mut(today) =
-                100.0 * (period_f - (today - lowest_idx) as f64) / period_f;
-        }
+        aroon_up[today] =
+            100.0 * (period_f - (today - highest_idx) as f64) / period_f;
+        aroon_down[today] =
+            100.0 * (period_f - (today - lowest_idx) as f64) / period_f;
         trailing_idx += 1;
         today += 1;
     }
@@ -159,8 +157,8 @@ pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f
     let mut today = timeperiod + 1;
 
     while today < len {
-        let h = unsafe { *high.get_unchecked(today) };
-        let l = unsafe { *low.get_unchecked(today) };
+        let h = high[today];
+        let l = low[today];
 
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
@@ -192,7 +190,7 @@ pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f
 
         let up = 100.0 * (period_f - (today - highest_idx) as f64) / period_f;
         let down = 100.0 * (period_f - (today - lowest_idx) as f64) / period_f;
-        unsafe { *output.get_unchecked_mut(today) = up - down; }
+        output[today] = up - down;
         trailing_idx += 1;
         today += 1;
     }

@@ -119,29 +119,35 @@ pub fn macd_ext(
     let fast_ma = compute_ma(input, fp, fastmatype)?;
     let slow_ma = compute_ma(input, sp, slowmatype)?;
 
-    // Collect valid MACD values (where both fast and slow MA are valid)
-    let mut macd_valid = Vec::new();
-    let mut macd_orig_indices = Vec::new();
-    for i in 0..len {
-        if !fast_ma[i].is_nan() && !slow_ma[i].is_nan() {
-            macd_valid.push(fast_ma[i] - slow_ma[i]);
-            macd_orig_indices.push(i);
-        }
-    }
+    // NaN prefix is contiguous — find where both MAs become valid
+    let valid_start = fast_ma
+        .iter()
+        .zip(slow_ma.iter())
+        .position(|(f, s)| !f.is_nan() && !s.is_nan())
+        .unwrap_or(len);
+
+    // Compute MACD values from valid_start (no separate index Vec needed)
+    let macd_valid: Vec<f64> = fast_ma[valid_start..]
+        .iter()
+        .zip(slow_ma[valid_start..].iter())
+        .map(|(f, s)| f - s)
+        .collect();
 
     let signal_ma = compute_ma(&macd_valid, signalperiod, signalmatype)?;
 
-    // C TA-Lib: all three outputs start at the same index
-    // NB: lookback depends on MA types, not statically known — keep NaN init
+    // Find where signal becomes valid
+    let sig_start = signal_ma.iter().position(|v| !v.is_nan()).unwrap_or(signal_ma.len());
+
     let mut macd_line = vec![f64::NAN; len];
     let mut signal_line = vec![f64::NAN; len];
     let mut histogram = vec![f64::NAN; len];
 
-    for (valid_idx, &orig_idx) in macd_orig_indices.iter().enumerate() {
-        if valid_idx < signal_ma.len() && !signal_ma[valid_idx].is_nan() {
-            macd_line[orig_idx] = macd_valid[valid_idx];
-            signal_line[orig_idx] = signal_ma[valid_idx];
-            histogram[orig_idx] = macd_valid[valid_idx] - signal_ma[valid_idx];
+    for j in sig_start..signal_ma.len() {
+        let orig = valid_start + j;
+        if orig < len {
+            macd_line[orig] = macd_valid[j];
+            signal_line[orig] = signal_ma[j];
+            histogram[orig] = macd_valid[j] - signal_ma[j];
         }
     }
 

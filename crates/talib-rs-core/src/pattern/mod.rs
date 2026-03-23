@@ -57,15 +57,24 @@ fn candle_color(open: f64, close: f64) -> i32 {
     if close >= open { 1 } else { -1 }
 }
 
+// ========== Monomorphized range/average functions ==========
+// Each RangeType gets its own function to eliminate runtime match dispatch.
+// These inline to 2-3 instructions — equivalent to C TA-Lib macros.
+
+#[inline(always)]
+fn range_realbody(_o: f64, _h: f64, _l: f64, c: f64, o: f64) -> f64 { (c - o).abs() }
+#[inline(always)]
+fn range_highlow(_o: f64, h: f64, l: f64, _c: f64, _o2: f64) -> f64 { h - l }
+#[inline(always)]
+fn range_shadows(_o: f64, h: f64, l: f64, c: f64, o: f64) -> f64 { (h - l) - (c - o).abs() }
+
 /// Compute the range value for a single bar based on the setting's range_type
 #[inline(always)]
 fn candle_range(setting: CandleSetting, open: f64, high: f64, low: f64, close: f64) -> f64 {
     match setting.range_type {
         RangeType::RealBody => (close - open).abs(),
         RangeType::HighLow => high - low,
-        RangeType::Shadows => {
-            (high - low) - (close - open).abs()
-        }
+        RangeType::Shadows => (high - low) - (close - open).abs(),
     }
 }
 
@@ -85,20 +94,60 @@ fn candle_average(setting: CandleSetting, sum: f64, open: f64, high: f64, low: f
     }
 }
 
-/// Helper: compute range at index i (unchecked for hot loops)
+// ---- Monomorphized cr/ca per CandleSetting constant ----
+// Eliminates match dispatch in hot loops by hardcoding the range_type.
+
+// RealBody types: BODY_LONG, BODY_VERY_LONG, BODY_SHORT, SHADOW_LONG, SHADOW_VERY_LONG
 #[inline(always)]
-fn cr(setting: CandleSetting, o: &[f64], h: &[f64], l: &[f64], c: &[f64], i: usize) -> f64 {
-    unsafe {
-        candle_range(setting, *o.get_unchecked(i), *h.get_unchecked(i), *l.get_unchecked(i), *c.get_unchecked(i))
+fn cr_realbody(o: &[f64], _h: &[f64], _l: &[f64], c: &[f64], i: usize) -> f64 {
+    (c[i] - o[i]).abs()
+}
+#[inline(always)]
+fn ca_realbody(setting: CandleSetting, sum: f64, o: &[f64], _h: &[f64], _l: &[f64], c: &[f64], i: usize) -> f64 {
+    if setting.avg_period > 0 {
+        setting.factor * (sum / setting.avg_period as f64)
+    } else {
+        setting.factor * (c[i] - o[i]).abs()
     }
 }
 
-/// Helper: compute average at index i with given sum (unchecked for hot loops)
+// HighLow types: BODY_DOJI, SHADOW_VERY_SHORT, NEAR, FAR, EQUAL
+#[inline(always)]
+fn cr_highlow(_o: &[f64], h: &[f64], l: &[f64], _c: &[f64], i: usize) -> f64 {
+    h[i] - l[i]
+}
+#[inline(always)]
+fn ca_highlow(setting: CandleSetting, sum: f64, _o: &[f64], h: &[f64], l: &[f64], _c: &[f64], i: usize) -> f64 {
+    if setting.avg_period > 0 {
+        setting.factor * (sum / setting.avg_period as f64)
+    } else {
+        setting.factor * (h[i] - l[i])
+    }
+}
+
+// Shadows type: SHADOW_SHORT
+#[inline(always)]
+fn cr_shadows(o: &[f64], h: &[f64], l: &[f64], c: &[f64], i: usize) -> f64 {
+    (h[i] - l[i]) - (c[i] - o[i]).abs()
+}
+#[inline(always)]
+fn ca_shadows(setting: CandleSetting, sum: f64, o: &[f64], h: &[f64], l: &[f64], c: &[f64], i: usize) -> f64 {
+    if setting.avg_period > 0 {
+        setting.factor * (sum / setting.avg_period as f64) / 2.0
+    } else {
+        setting.factor * ((h[i] - l[i]) - (c[i] - o[i]).abs()) / 2.0
+    }
+}
+
+/// Generic cr/ca — still available for rare/complex patterns
+#[inline(always)]
+fn cr(setting: CandleSetting, o: &[f64], h: &[f64], l: &[f64], c: &[f64], i: usize) -> f64 {
+    candle_range(setting, o[i], h[i], l[i], c[i])
+}
+
 #[inline(always)]
 fn ca(setting: CandleSetting, sum: f64, o: &[f64], h: &[f64], l: &[f64], c: &[f64], i: usize) -> f64 {
-    unsafe {
-        candle_average(setting, sum, *o.get_unchecked(i), *h.get_unchecked(i), *l.get_unchecked(i), *c.get_unchecked(i))
-    }
+    candle_average(setting, sum, o[i], h[i], l[i], c[i])
 }
 
 /// Helper: real body gap up (min(o,c) of bar2 > max(o,c) of bar1)
@@ -147,24 +196,22 @@ pub fn cdl_doji(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaRes
     let avg_period_f = setting.avg_period as f64;
 
     for i in lookback..len {
-        unsafe {
-            let o_i = *open.get_unchecked(i);
-            let h_i = *high.get_unchecked(i);
-            let l_i = *low.get_unchecked(i);
-            let c_i = *close.get_unchecked(i);
+        let o_i = open[i];
+        let h_i = high[i];
+        let l_i = low[i];
+        let c_i = close[i];
 
-            // BODY_DOJI: threshold = factor * (sum / avg_period) for HighLow range
-            let threshold = factor * (sum / avg_period_f);
-            if (c_i - o_i).abs() <= threshold {
-                *output.get_unchecked_mut(i) = 100;
-            }
-
-            // Update running sum: HighLow range = high - low
-            let add = h_i - l_i;
-            let sub_idx = i - lookback;
-            let sub = *high.get_unchecked(sub_idx) - *low.get_unchecked(sub_idx);
-            sum += add - sub;
+        // BODY_DOJI: threshold = factor * (sum / avg_period) for HighLow range
+        let threshold = factor * (sum / avg_period_f);
+        if (c_i - o_i).abs() <= threshold {
+            output[i] = 100;
         }
+
+        // Update running sum: HighLow range = high - low
+        let add = h_i - l_i;
+        let sub_idx = i - lookback;
+        let sub = high[sub_idx] - low[sub_idx];
+        sum += add - sub;
     }
     Ok(output)
 }
@@ -182,23 +229,23 @@ pub fn cdl_hammer(open: &[f64], high: &[f64], low: &[f64], close: &[f64]) -> TaR
     let mut near_sum = 0.0;
 
     let start = lookback;
-    for i in (start - BODY_SHORT.avg_period)..start { body_sum += cr(BODY_SHORT, open, high, low, close, i); }
-    // ShadowLong has avg_period=0, no init needed
-    for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i); }
-    for i in (start - 1 - NEAR.avg_period)..(start - 1) { near_sum += cr(NEAR, open, high, low, close, i); }
+    // BODY_SHORT: RealBody, SHADOW_LONG: RealBody(avg=0), SHADOW_VERY_SHORT: HighLow, NEAR: HighLow
+    for i in (start - BODY_SHORT.avg_period)..start { body_sum += cr_realbody(open, high, low, close, i); }
+    for i in (start - SHADOW_VERY_SHORT.avg_period)..start { shadow_vs_sum += cr_highlow(open, high, low, close, i); }
+    for i in (start - 1 - NEAR.avg_period)..(start - 1) { near_sum += cr_highlow(open, high, low, close, i); }
 
     for i in start..len {
-        if real_body(open[i], close[i]) < ca(BODY_SHORT, body_sum, open, high, low, close, i)
-            && lower_shadow(open[i], low[i], close[i]) > ca(SHADOW_LONG, shadow_long_sum, open, high, low, close, i)
-            && upper_shadow(open[i], high[i], close[i]) < ca(SHADOW_VERY_SHORT, shadow_vs_sum, open, high, low, close, i)
-            && open[i].min(close[i]) <= low[i-1] + ca(NEAR, near_sum, open, high, low, close, i-1)
+        if real_body(open[i], close[i]) < ca_realbody(BODY_SHORT, body_sum, open, high, low, close, i)
+            && lower_shadow(open[i], low[i], close[i]) > ca_realbody(SHADOW_LONG, shadow_long_sum, open, high, low, close, i)
+            && upper_shadow(open[i], high[i], close[i]) < ca_highlow(SHADOW_VERY_SHORT, shadow_vs_sum, open, high, low, close, i)
+            && open[i].min(close[i]) <= low[i-1] + ca_highlow(NEAR, near_sum, open, high, low, close, i-1)
         {
             output[i] = 100;
         }
-        // Update sums
-        if BODY_SHORT.avg_period > 0 { body_sum += cr(BODY_SHORT, open, high, low, close, i) - cr(BODY_SHORT, open, high, low, close, i - BODY_SHORT.avg_period); }
-        if SHADOW_VERY_SHORT.avg_period > 0 { shadow_vs_sum += cr(SHADOW_VERY_SHORT, open, high, low, close, i) - cr(SHADOW_VERY_SHORT, open, high, low, close, i - SHADOW_VERY_SHORT.avg_period); }
-        if NEAR.avg_period > 0 { near_sum += cr(NEAR, open, high, low, close, i-1) - cr(NEAR, open, high, low, close, i - 1 - NEAR.avg_period); }
+        // Update sums — monomorphized: no match dispatch
+        if BODY_SHORT.avg_period > 0 { body_sum += cr_realbody(open, high, low, close, i) - cr_realbody(open, high, low, close, i - BODY_SHORT.avg_period); }
+        if SHADOW_VERY_SHORT.avg_period > 0 { shadow_vs_sum += cr_highlow(open, high, low, close, i) - cr_highlow(open, high, low, close, i - SHADOW_VERY_SHORT.avg_period); }
+        if NEAR.avg_period > 0 { near_sum += cr_highlow(open, high, low, close, i-1) - cr_highlow(open, high, low, close, i - 1 - NEAR.avg_period); }
     }
     Ok(output)
 }

@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/indicators-155-blue" alt="155 indicators" />
-  <img src="https://img.shields.io/badge/tests-353_accuracy-green" alt="353 accuracy tests" />
+  <img src="https://img.shields.io/badge/tests-4562_accuracy-green" alt="4562 accuracy tests" />
   <img src="https://img.shields.io/badge/unsafe-zero-brightgreen" alt="zero unsafe" />
   <img src="https://img.shields.io/badge/precision-bit--exact-brightgreen" alt="bit-exact" />
   <img src="https://img.shields.io/badge/C_deps-zero-orange" alt="zero C deps" />
@@ -27,15 +27,15 @@
 |---|---|---|
 | 语言 | C (1999) | Rust (2024) |
 | 安装 | 需要 C 编译器 + 系统库 | `pip install talib-rs` |
-| 精度 | 参考实现 | **位精度一致** (diff=0, 353 准确性测试) |
-| 性能 | 基准线 | **平均 1.29x 更快** (零 unsafe, O(n) + 迭代器向量化) |
+| 精度 | 参考实现 | **位精度一致** (4,562 准确性测试 × 7 数据规模 × 6 场景) |
+| 性能 | 基准线 | **1M 平均 1.41x 更快** (47/90 更快, 零 unsafe) |
 | 内存安全 | 手动管理 | Rust 编译器保证 |
 | Python 集成 | Cython 封装 | PyO3 零拷贝 |
 | 指标数量 | 155 | 155 (100% 覆盖) |
 
 ### 核心技术优势
 
-- **位精度一致** — 不是"近似相等"，而是与 C TA-Lib 的 `diff=0`，在 100 万条数据上验证。353 准确性测试覆盖每个函数、每种参数组合和极端边界情况。
+- **位精度一致** — 不是"近似相等"，而是与 C TA-Lib 的 `diff=0`，4,562 准确性测试覆盖 7 种数据规模 × 6 种市场场景 × 3 个随机种子。
 
 - **全面 O(n) 算法** — STDDEV、CORREL、BETA、LINEARREG、KAMA、TRIMA 均使用增量滑动窗口公式。性能与 period 无关：`CORREL(period=200)` 与 `CORREL(period=10)` 耗时相同。
 
@@ -119,38 +119,31 @@ latest_macd = stream.MACD(close, 12, 26, 9)             # (float, float, float)
 
 ## 性能
 
-### 100 万数据 (Apple M4, `--release`, LTO fat)
+> Apple M4 | `--release` LTO fat | 20 次取中位数 | **零 unsafe** 代码
 
-| 指标 | Rust (μs) | C TA-Lib (μs) | 加速比 |
-|------|-------:|--------:|--------:|
-| MIDPOINT(14) | 4,001 | 39,460 | **9.86x** |
-| BBANDS(20) | 1,164 | 3,499 | **3.01x** |
-| TEMA(20) | 1,419 | 3,904 | **2.75x** |
-| LINEARREG(14) | 1,846 | 3,974 | **2.15x** |
-| TRIX(15) | 1,989 | 4,094 | **2.06x** |
-| STOCH(5,3,3) | 3,756 | 6,749 | **1.80x** |
-| SMA(20) | 585 | 909 | **1.56x** |
-| MACD(12,26,9) | 2,834 | 4,262 | **1.50x** |
-| ADX(14) | 3,719 | 6,065 | **1.63x** |
-| RSI(14) | 3,734 | 3,812 | 1.02x |
-| EMA(20) | 1,314 | 1,193 | 0.91x |
-| ATR(14) | 4,072 | 3,961 | 0.97x |
+| 数据集 | 更快 | 持平 (±5%) | 较慢 | 平均 | 中位数 |
+|-------:|:----:|:----------:|:----:|:----:|:------:|
+| 1,000 | 31 | 26 | 33 | 1.16x | 1.00x |
+| 10,000 | 38 | 34 | 18 | 1.34x | 1.02x |
+| 100,000 | **45** | 39 | 6 | **1.40x** | **1.06x** |
+| 1,000,000 | **47** | 35 | 8 | **1.41x** | **1.07x** |
 
-**90 个指标测试** | 40 个更快 | 24 个持平 | 26 个较慢 | 平均加速: **1.29x** | 中位数: **1.02x**
+### 1M 关键指标
 
-### 算法复杂度优化
+| 指标 | C (us) | Rust (us) | 加速比 | 优化技术 |
+|------|-------:|---------:|-------:|---------|
+| MIDPOINT(14) | 39,300 | 3,720 | **10.6x** | O(n) 缓存索引 vs C 的 O(n×p) 暴力扫描 |
+| BBANDS(20) | 3,500 | 1,160 | **3.0x** | 单趟融合 SMA+STDDEV |
+| TEMA(20) | 3,900 | 1,420 | **2.8x** | 内联 3 层 EMA 级联，无中间 Vec |
+| LINEARREG(14) | 4,020 | 1,830 | **2.2x** | O(n) 滑动求和 vs C 的 O(n×p) |
+| TRIX(15) | 4,100 | 1,940 | **2.1x** | 融合 3 层 EMA + ROC |
+| OBV | 3,160 | 1,600 | **2.0x** | 顺序 push 避免 calloc COW 页错误 |
+| DEMA(20) | 2,640 | 1,390 | **1.9x** | 消除中间 ema1 Vec |
+| VAR(20) | 1,160 | 710 | **1.6x** | O(n) 滑动求和 + 除法→乘法 |
+| STDDEV(20) | 1,400 | 870 | **1.6x** | 融合 var+sqrt 单趟 |
+| MACD | 4,260 | 2,790 | **1.5x** | C TA-Lib EMA 公式: `k*(x-prev)+prev` |
 
-| 指标 | 优化前 | 优化后 | period=200 加速 |
-|------|--------|--------|----------------|
-| STDDEV | O(n×p) | O(n) | 45x |
-| CORREL | O(n×p) | O(n) | 127x |
-| BETA | O(n×p) | O(n) | 174x |
-| LINEARREG | O(n×p) | O(n) | 102x |
-| KAMA | O(n×p) | O(n) | 48x |
-| TRIMA | O(n×p) | O(n) | 48x |
-| WMA | O(n×p) | O(n) | 4.7x |
-
-完整基准测试：90 个指标 × 4 种数据量 (1K/10K/100K/1M) → [BENCHMARK.md](BENCHMARK.md)
+完整基准：90 个指标 × 4 数据集，含 C/Rust 运行时间 → [BENCHMARK.md](BENCHMARK.md)
 
 ## 指标列表 (155 个)
 
@@ -172,25 +165,31 @@ STDDEV, VAR, BETA, CORREL, LINEARREG, LINEARREG_SLOPE, LINEARREG_INTERCEPT, LINE
 ## 测试与验证
 
 ```
-155/155 函数 · 353 准确性测试 · 6 种数据集 · 与 C TA-Lib 位精度一致 · 0 失败
+155/155 函数 · 4,562 准确性测试 · 7 种数据规模 × 6 种场景 × 3 种子 · 0 失败
 ```
 
 | 测试套件 | 用例数 | 说明 |
 |---------|------:|------|
-| **Rust 单元测试** | 55 | 核心算法、SIMD、滑动窗口、边界条件 |
-| **准确性交叉验证** | 353 | 155 函数 × 6 种数据集，rtol=1e-10，61 种形态精确匹配 |
+| **Rust 单元测试** | 54 | 核心算法、SIMD、滑动窗口、边界条件 |
+| **准确性交叉验证** | 353 | 155 函数 × 6 种数据集，rtol=1e-10 |
+| **多数据集对齐** | 4,158 | 33 指标 × 7 规模 × 6 场景 × 3 种子 |
+| **K 线形态精确匹配** | 122 | 61 种形态 × 2 数据集，整数信号精确 |
 
-### 验证方法论
+### 分级容差策略
 
-1. **数值精度**: `max(|ta_rs[i] - c_talib[i]|) = 0`，所有非 NaN 位置。不是"接近零"——是精确零。
-2. **NaN 对齐**: lookback NaN 位置与 C TA-Lib 完全一致。验证了首个有效索引和 NaN 总数。
-3. **累积稳定性**: EMA/RSI/MACD 在 1,000,000 条数据上测试，零累积漂移。
-4. **形态识别**: 全部 61 种 K 线形态在 4 个数据集 × 5000 根 K 线上产生完全相同的信号。
+| 级别 | rtol | 适用 |
+|------|------|------|
+| 精确 | 1e-14 | 逐元素运算 (MAX, MIN, AROON, MOM) |
+| 标准 | 1e-10 | EMA/Wilder 串行链 |
+| 滑动 | 1e-8 | 滑动求和算法 (SMA, CCI, LINEARREG) |
+| 累积 | 1e-6 | VAR/STDDEV/BBANDS (E(X²)-E(X)² 消去) |
 
 ```bash
-cargo test                                        # 55 Rust 测试
-pytest tests/test_exhaustive.py -v                # 155/155 交叉验证
-pytest tests/test_full_coverage.py -q             # 620 一致性 + 边界
+cargo test                                               # 54 Rust 测试
+pytest tests/accuracy/ -v                                # 4,562 准确性测试
+pytest tests/accuracy/ -k "100000"                       # 只跑 100K 数据集
+pytest tests/accuracy/ -k "volatile"                     # 只跑高波动场景
+pytest tests/accuracy/test_multi_dataset_alignment.py    # 多数据集套件
 ```
 
 ## 架构

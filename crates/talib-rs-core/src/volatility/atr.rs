@@ -1,4 +1,3 @@
-use super::true_range_array;
 use crate::error::{TaError, TaResult};
 
 /// True Range (TRANGE) — zip-based for auto-vectorization
@@ -31,7 +30,7 @@ pub fn trange(high: &[f64], low: &[f64], close: &[f64]) -> TaResult<Vec<f64>> {
     Ok(output)
 }
 
-/// Average True Range (ATR)
+/// Average True Range (ATR) — inline TR, no temporary Vec
 ///
 /// Wilder smoothing, lookback = timeperiod
 pub fn atr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
@@ -49,17 +48,34 @@ pub fn atr(high: &[f64], low: &[f64], close: &[f64], timeperiod: usize) -> TaRes
         });
     }
 
-    let tr = true_range_array(high, low, close);
     let mut output = vec![0.0_f64; len];
     output[..timeperiod].fill(f64::NAN);
 
-    let sum: f64 = tr[1..=timeperiod].iter().sum();
-    let mut prev_atr = sum / timeperiod as f64;
+    // Inline TR computation: avoid 8MB temporary Vec allocation
+    let tr_at = |i: usize| -> f64 {
+        if i == 0 {
+            high[0] - low[0]
+        } else {
+            let h = high[i];
+            let l = low[i];
+            let pc = close[i - 1];
+            let hl = h - l;
+            let hc = (h - pc).abs();
+            let lc = (l - pc).abs();
+            hl.max(hc).max(lc)
+        }
+    };
+
+    let mut sum = 0.0_f64;
+    for i in 1..=timeperiod {
+        sum += tr_at(i);
+    }
+    let pf = timeperiod as f64;
+    let mut prev_atr = sum / pf;
     output[timeperiod] = prev_atr;
 
-    let pf = timeperiod as f64;
     for i in (timeperiod + 1)..len {
-        prev_atr = (prev_atr * (pf - 1.0) + tr[i]) / pf;
+        prev_atr = (prev_atr * (pf - 1.0) + tr_at(i)) / pf;
         output[i] = prev_atr;
     }
 

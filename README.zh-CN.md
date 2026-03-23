@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/indicators-155-blue" alt="155 indicators" />
+  <img src="https://img.shields.io/badge/indicators-158-blue" alt="158 indicators" />
   <img src="https://img.shields.io/badge/tests-4562_accuracy-green" alt="17855 accuracy tests" />
   <img src="https://img.shields.io/badge/unsafe-zero-brightgreen" alt="zero unsafe" />
   <img src="https://img.shields.io/badge/precision-bit--exact-brightgreen" alt="bit-exact" />
@@ -31,7 +31,7 @@
 | 性能 | 基准线 | **1M 平均 1.41x 更快** (47/90 更快, 零 unsafe) |
 | 内存安全 | 手动管理 | Rust 编译器保证 |
 | Python 集成 | Cython 封装 | PyO3 零拷贝 |
-| 指标数量 | 155 | 155 (100% 覆盖) |
+| 指标数量 | 158 | 158 (100% 覆盖) |
 
 ### 核心技术优势
 
@@ -79,7 +79,7 @@ macd, signal, hist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperio
 engulfing = talib.CDLENGULFING(open, high, low, close)  # -100 / 0 / 100
 
 # 函数发现
-print(len(talib.get_functions()))       # 155
+print(len(talib.get_functions()))       # 158
 print(talib.get_function_groups().keys())
 ```
 
@@ -145,7 +145,7 @@ latest_macd = stream.MACD(close, 12, 26, 9)             # (float, float, float)
 
 完整基准：90 个指标 × 4 数据集，含 C/Rust 运行时间 → [BENCHMARK.md](BENCHMARK.md)
 
-## 指标列表 (155 个)
+## 指标列表 (158 个)
 
 ### 趋势叠加 (16)
 SMA, EMA, WMA, DEMA, TEMA, TRIMA, KAMA, T3, MAMA, BBANDS, SAR, SAREXT, MIDPOINT, MIDPRICE, MAVP, HT_TRENDLINE
@@ -165,13 +165,13 @@ STDDEV, VAR, BETA, CORREL, LINEARREG, LINEARREG_SLOPE, LINEARREG_INTERCEPT, LINE
 ## 测试与验证
 
 ```
-155/155 函数 · 17,855 准确性测试 · 7 种数据规模 × 6 种场景 × 3 种子 · 0 失败
+158/158 函数 · 17,855 准确性测试 · 7 种数据规模 × 6 种场景 × 3 种子 · 0 失败
 ```
 
 | 测试套件 | 用例数 | 说明 |
 |---------|------:|------|
 | **Rust 单元测试** | 54 | 核心算法、SIMD、滑动窗口、边界条件 |
-| **准确性交叉验证** | 353 | 155 函数 × 6 种数据集，rtol=1e-10 |
+| **准确性交叉验证** | 353 | 158 函数 × 6 种数据集，rtol=1e-10 |
 | **多数据集对齐** | 17,451 | 158 函数 × 7 规模 × 6 场景 × 3 种子 |
 | **K 线形态精确匹配** | 122 | 61 种形态 × 2 数据集，整数信号精确 |
 
@@ -215,7 +215,7 @@ talib-rs/
 │   │
 │   └── talib-rs-python/                  # PyO3 绑定
 │       └── src/
-│           ├── func_api.rs            # 155 个 #[pyfunction] 定义
+│           ├── func_api.rs            # 158 个 #[pyfunction] 定义
 │           ├── metadata.rs            # get_functions(), get_function_groups()
 │           └── conversion.rs          # 零拷贝 NumPy ↔ Rust
 │

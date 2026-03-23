@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/indicators-155-blue" alt="155 indicators" />
+  <img src="https://img.shields.io/badge/indicators-158-blue" alt="158 indicators" />
   <img src="https://img.shields.io/badge/tests-4562_accuracy-green" alt="17855 accuracy tests" />
   <img src="https://img.shields.io/badge/unsafe-zero-brightgreen" alt="zero unsafe" />
   <img src="https://img.shields.io/badge/precision-bit--exact-brightgreen" alt="bit-exact" />
@@ -31,7 +31,7 @@
 | Performance | Baseline | **1.41x avg faster** at 1M bars (47/90 faster, zero unsafe) |
 | Memory safety | Manual management | Guaranteed by Rust |
 | Python integration | Cython wrapper | PyO3 zero-copy |
-| Indicators | 155 | 155 (100% coverage) |
+| Indicators | 158 | 158 (100% coverage) |
 
 ### Key Technical Advantages
 
@@ -85,7 +85,7 @@ engulfing = talib.CDLENGULFING(open, high, low, close)  # -100 / 0 / 100
 hammer    = talib.CDLHAMMER(open, high, low, close)
 
 # Metadata
-print(len(talib.get_functions()))       # 155
+print(len(talib.get_functions()))       # 158
 print(talib.get_function_groups().keys())
 # ['Overlap Studies', 'Momentum Indicators', 'Pattern Recognition', ...]
 ```
@@ -156,7 +156,7 @@ latest_sma  = stream.SMA(close, timeperiod=20)           # float
 
 Full benchmark: 90 indicators × 4 datasets with C/Rust times → [BENCHMARK.md](BENCHMARK.md)
 
-## Indicators (155)
+## Indicators (158)
 
 ### Overlap Studies (16)
 SMA, EMA, WMA, DEMA, TEMA, TRIMA, KAMA, T3, MAMA, BBANDS, SAR, SAREXT, MIDPOINT, MIDPRICE, MAVP, HT_TRENDLINE
@@ -191,7 +191,7 @@ HT_DCPERIOD, HT_DCPHASE, HT_PHASOR, HT_SINE, HT_TRENDMODE
 ## Testing & Verification
 
 ```
-155/155 functions · 17,855 accuracy tests · 7 data sizes × 6 scenarios × 3 seeds · 0 failures
+158/158 functions · 17,855 accuracy tests · 7 data sizes × 6 scenarios × 3 seeds · 0 failures
 ```
 
 ### Test Matrix
@@ -199,7 +199,7 @@ HT_DCPERIOD, HT_DCPHASE, HT_PHASOR, HT_SINE, HT_TRENDMODE
 | Suite | Cases | Description |
 |-------|------:|------------|
 | **Rust unit tests** | 54 | Core algorithm, SIMD, sliding window, edge cases |
-| **Accuracy cross-validation** | 353 | 155 functions × 6 datasets, rtol=1e-10 |
+| **Accuracy cross-validation** | 353 | 158 functions × 6 datasets, rtol=1e-10 |
 | **Multi-dataset alignment** | 17,451 | 158 functions × 7 sizes × 6 scenarios × 3 seeds |
 | **Pattern exact match** | 122 | 61 CDL patterns × 2 datasets, integer signal exact |
 
@@ -246,7 +246,7 @@ talib-rs/
 │   │
 │   └── talib-rs-python/                  # PyO3 bindings
 │       └── src/
-│           ├── func_api.rs            # 155 #[pyfunction] definitions
+│           ├── func_api.rs            # 158 #[pyfunction] definitions
 │           ├── metadata.rs            # get_functions(), get_function_groups()
 │           └── conversion.rs          # Zero-copy NumPy ↔ Rust
 │
@@ -256,7 +256,7 @@ talib-rs/
 │   └── stream.py                      # Latest-value-only wrappers
 │
 ├── tests/
-│   ├── test_exhaustive.py             # 155/155 cross-validation
+│   ├── test_exhaustive.py             # 158/158 cross-validation
 │   ├── test_full_coverage.py          # Consistency + edge (620 tests)
 │   └── accuracy/                      # Focused accuracy tests
 │

@@ -1,6 +1,6 @@
 use crate::error::{TaError, TaResult};
 
-/// Kaufman Adaptive Moving Average (KAMA) — O(n) with slice-based bounds elision
+/// Kaufman Adaptive Moving Average (KAMA) — O(n) sliding window
 pub fn kama(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     if timeperiod < 2 {
         return Err(TaError::InvalidParameter {
@@ -12,10 +12,7 @@ pub fn kama(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let len = input.len();
     let lookback = timeperiod;
     if len <= lookback {
-        return Err(TaError::InsufficientData {
-            need: lookback + 1,
-            got: len,
-        });
+        return Err(TaError::InsufficientData { need: lookback + 1, got: len });
     }
 
     let mut output = vec![0.0_f64; len];
@@ -26,48 +23,25 @@ pub fn kama(input: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let sc_diff = fast_sc - slow_sc;
 
     let mut prev_kama: f64 = input[timeperiod - 1];
-
-    // Initialize volatility
     let mut volatility = 0.0_f64;
-    for (&cur, &prev) in input[1..=timeperiod].iter().zip(input[..timeperiod].iter()) {
-        volatility += (cur - prev).abs();
+    for j in 1..=timeperiod {
+        volatility += (input[j] - input[j - 1]).abs();
     }
 
-    // First output
-    {
-        let direction = (input[lookback] - input[0]).abs();
-        let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
-        let sc_raw = er * sc_diff + slow_sc;
-        let sc = sc_raw * sc_raw;
-        prev_kama += sc * (input[lookback] - prev_kama);
-        output[lookback] = prev_kama;
-    }
+    let direction = (input[lookback] - input[0]).abs();
+    let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
+    let sc = er * sc_diff + slow_sc;
+    prev_kama += (sc * sc) * (input[lookback] - prev_kama);
+    output[lookback] = prev_kama;
 
-    // Hot loop: 4 pre-sliced views → zero bounds checks
-    // cur   = input[i]       where i in (lookback+1)..len
-    // prev  = input[i-1]
-    // far   = input[i-tp]
-    // farp  = input[i-tp-1]
-    let count = len - lookback - 1;
-    let cur = &input[(lookback + 1)..];
-    let prev = &input[lookback..len - 1];
-    let far = &input[1..len - timeperiod];
-    let farp = &input[..len - timeperiod - 1];
-
-    for ((((&c, &p), &f), &fp), o) in cur[..count]
-        .iter()
-        .zip(prev[..count].iter())
-        .zip(far[..count].iter())
-        .zip(farp[..count].iter())
-        .zip(output[(lookback + 1)..].iter_mut())
-    {
-        volatility += (c - p).abs() - (f - fp).abs();
-        let direction = (c - f).abs();
+    for i in (lookback + 1)..len {
+        volatility += (input[i] - input[i - 1]).abs()
+            - (input[i - timeperiod] - input[i - timeperiod - 1]).abs();
+        let direction = (input[i] - input[i - timeperiod]).abs();
         let er = if volatility > 0.0 { direction / volatility } else { 0.0 };
-        let sc_raw = er * sc_diff + slow_sc;
-        let sc = sc_raw * sc_raw;
-        prev_kama += sc * (c - prev_kama);
-        *o = prev_kama;
+        let sc = er * sc_diff + slow_sc;
+        prev_kama += (sc * sc) * (input[i] - prev_kama);
+        output[i] = prev_kama;
     }
 
     Ok(output)

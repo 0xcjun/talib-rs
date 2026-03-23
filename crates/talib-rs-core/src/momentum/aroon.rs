@@ -1,55 +1,37 @@
 use crate::error::{TaError, TaResult};
 
-/// Aroon (AROON) -- scalar brute rescan (amortized O(n))
+/// Aroon (AROON) — single-pass brute rescan with slice iterators
 ///
 /// Returns (aroon_down, aroon_up)
-/// Aroon Up = 100 * (period - bars since highest high) / period
-/// Aroon Down = 100 * (period - bars since lowest low) / period
-/// lookback = timeperiod
 pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>, Vec<f64>)> {
     let len = high.len();
     if len != low.len() {
-        return Err(TaError::LengthMismatch {
-            expected: len,
-            got: low.len(),
-        });
+        return Err(TaError::LengthMismatch { expected: len, got: low.len() });
     }
     if timeperiod < 2 {
         return Err(TaError::InvalidParameter {
-            name: "timeperiod",
-            value: timeperiod.to_string(),
-            reason: "must be >= 2",
+            name: "timeperiod", value: timeperiod.to_string(), reason: "must be >= 2",
         });
     }
     if len <= timeperiod {
-        return Err(TaError::InsufficientData {
-            need: timeperiod + 1,
-            got: len,
-        });
+        return Err(TaError::InsufficientData { need: timeperiod + 1, got: len });
     }
 
     let period_f = timeperiod as f64;
-    let window = timeperiod + 1; // aroon window is period+1 bars
+    let window = timeperiod + 1;
 
     let mut aroon_down = vec![0.0_f64; len];
     aroon_down[..timeperiod].fill(f64::NAN);
     let mut aroon_up = vec![0.0_f64; len];
     aroon_up[..timeperiod].fill(f64::NAN);
 
-    // Initialize first window [0..=timeperiod]
     let mut highest = high[0];
     let mut highest_idx: usize = 0;
     let mut lowest = low[0];
     let mut lowest_idx: usize = 0;
     for j in 1..window {
-        if high[j] >= highest {
-            highest = high[j];
-            highest_idx = j;
-        }
-        if low[j] <= lowest {
-            lowest = low[j];
-            lowest_idx = j;
-        }
+        if high[j] >= highest { highest = high[j]; highest_idx = j; }
+        if low[j] <= lowest { lowest = low[j]; lowest_idx = j; }
     }
     aroon_up[timeperiod] = 100.0 * (period_f - (timeperiod - highest_idx) as f64) / period_f;
     aroon_down[timeperiod] = 100.0 * (period_f - (timeperiod - lowest_idx) as f64) / period_f;
@@ -64,7 +46,7 @@ pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = high[trailing_idx];
-            for (j, &val) in high[trailing_idx + 1..=today].iter().enumerate() {
+            for (j, &val) in high[trailing_idx + 1..today + 1].iter().enumerate() {
                 if val >= highest { highest = val; highest_idx = trailing_idx + 1 + j; }
             }
         } else if h >= highest {
@@ -75,7 +57,7 @@ pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = low[trailing_idx];
-            for (j, &val) in low[trailing_idx + 1..=today].iter().enumerate() {
+            for (j, &val) in low[trailing_idx + 1..today + 1].iter().enumerate() {
                 if val <= lowest { lowest = val; lowest_idx = trailing_idx + 1 + j; }
             }
         } else if l <= lowest {
@@ -92,34 +74,23 @@ pub fn aroon(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<(Vec<f64>
     Ok((aroon_down, aroon_up))
 }
 
-/// Aroon Oscillator -- scalar brute rescan (amortized O(n))
-///
-/// AROONOSC = Aroon Up - Aroon Down
+/// Aroon Oscillator — single-pass, AROONOSC = Aroon Up - Aroon Down
 pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f64>> {
     let len = high.len();
     if len != low.len() {
-        return Err(TaError::LengthMismatch {
-            expected: len,
-            got: low.len(),
-        });
+        return Err(TaError::LengthMismatch { expected: len, got: low.len() });
     }
     if timeperiod < 2 {
         return Err(TaError::InvalidParameter {
-            name: "timeperiod",
-            value: timeperiod.to_string(),
-            reason: "must be >= 2",
+            name: "timeperiod", value: timeperiod.to_string(), reason: "must be >= 2",
         });
     }
     if len <= timeperiod {
-        return Err(TaError::InsufficientData {
-            need: timeperiod + 1,
-            got: len,
-        });
+        return Err(TaError::InsufficientData { need: timeperiod + 1, got: len });
     }
 
     let period_f = timeperiod as f64;
     let window = timeperiod + 1;
-
     let mut output = vec![0.0_f64; len];
     output[..timeperiod].fill(f64::NAN);
 
@@ -128,14 +99,8 @@ pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f
     let mut lowest = low[0];
     let mut lowest_idx: usize = 0;
     for j in 1..window {
-        if high[j] >= highest {
-            highest = high[j];
-            highest_idx = j;
-        }
-        if low[j] <= lowest {
-            lowest = low[j];
-            lowest_idx = j;
-        }
+        if high[j] >= highest { highest = high[j]; highest_idx = j; }
+        if low[j] <= lowest { lowest = low[j]; lowest_idx = j; }
     }
     {
         let up = 100.0 * (period_f - (timeperiod - highest_idx) as f64) / period_f;
@@ -153,7 +118,7 @@ pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f
         if highest_idx < trailing_idx {
             highest_idx = trailing_idx;
             highest = high[trailing_idx];
-            for (j, &val) in high[trailing_idx + 1..=today].iter().enumerate() {
+            for (j, &val) in high[trailing_idx + 1..today + 1].iter().enumerate() {
                 if val >= highest { highest = val; highest_idx = trailing_idx + 1 + j; }
             }
         } else if h >= highest {
@@ -164,7 +129,7 @@ pub fn aroon_osc(high: &[f64], low: &[f64], timeperiod: usize) -> TaResult<Vec<f
         if lowest_idx < trailing_idx {
             lowest_idx = trailing_idx;
             lowest = low[trailing_idx];
-            for (j, &val) in low[trailing_idx + 1..=today].iter().enumerate() {
+            for (j, &val) in low[trailing_idx + 1..today + 1].iter().enumerate() {
                 if val <= lowest { lowest = val; lowest_idx = trailing_idx + 1 + j; }
             }
         } else if l <= lowest {

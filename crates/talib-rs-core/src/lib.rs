@@ -10,6 +10,7 @@ pub mod math_operator;
 pub mod math_transform;
 pub mod momentum;
 pub mod overlap;
+#[allow(unused_mut, unused_variables, unused_assignments, dead_code)]
 pub mod pattern;
 pub mod price_transform;
 pub mod statistic;
